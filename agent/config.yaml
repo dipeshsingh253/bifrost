@@ -1,0 +1,16 @@
+server_id: srv-dev-server
+server_name: dev-server
+tenant_id: tenant-demo
+backend_url: http://localhost:8080
+api_key: demo-agent-key
+poll_interval_seconds: 10
+
+collectors:
+  host: true
+  docker: true
+  logs: true
+
+docker:
+  include_projects: []
+  exclude_containers:
+    - redis
