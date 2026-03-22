@@ -378,9 +378,9 @@ Manual testing:
 
 Next steps file:
 
-- always append steps to `next-steps.md`
+- always replace `next-steps.md` with only the latest relevant manual steps
 - keep steps simple, ordered, actionable
-- do not remove old entries
+- remove prior content when the file is updated
 
 ---
 
@@ -459,7 +459,7 @@ Suggest improvements freely, keep implementation practical, ask first when risk 
 
 ### Next Steps Workflow
 
-Always append manual steps to `next-steps.md`.
+Always overwrite `next-steps.md` with the latest manual steps only.
 
 Prefer manual steps for:
 
@@ -471,6 +471,7 @@ Prefer manual steps for:
 Do not try to automate these.
 
 Keep steps simple and actionable.
+Keep the file short and current.
 
 ---
 

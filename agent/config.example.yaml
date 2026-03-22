@@ -11,9 +11,6 @@ collectors:
   logs: true
 
 docker:
-  include_projects:
-    - service-a
-    - search-stack
+  include_projects: []
   exclude_containers:
     - redis
-
