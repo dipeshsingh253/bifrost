@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/dipesh/bifrost/agent/internal/client"
@@ -10,9 +11,21 @@ import (
 )
 
 func main() {
-	cfg, err := config.Load("config.yaml")
+	configPath := os.Getenv("BIFROST_CONFIG_PATH")
+	if configPath == "" {
+		configPath = "config.yaml"
+	}
+
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		log.Fatalf("load config: %v", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("invalid config: %v", err)
+	}
+
+	if err := ensureEnrollment(configPath, &cfg); err != nil {
+		log.Fatalf("enroll agent: %v", err)
 	}
 
 	httpClient := client.New(cfg.BackendURL, cfg.APIKey)
@@ -46,5 +59,24 @@ func runOnce(
 	serviceSnapshots, logPayloads := dockerCollector.Collect()
 	serverSnapshot.Services = serviceSnapshots
 
-	return httpClient.PushSnapshot(serverSnapshot, metrics, logPayloads)
+	return httpClient.PushSnapshot(cfg.AgentID, serverSnapshot, metrics, logPayloads)
+}
+
+func ensureEnrollment(configPath string, cfg *config.Config) error {
+	if cfg.APIKey != "" {
+		return nil
+	}
+	if cfg.EnrollmentToken == "" {
+		return nil
+	}
+
+	bootstrapClient := client.New(cfg.BackendURL, cfg.EnrollmentToken)
+	apiKey, err := bootstrapClient.Enroll(cfg.AgentID, cfg.ServerID)
+	if err != nil {
+		return err
+	}
+
+	cfg.APIKey = apiKey
+	cfg.EnrollmentToken = ""
+	return config.Save(configPath, *cfg)
 }

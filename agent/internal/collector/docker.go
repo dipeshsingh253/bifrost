@@ -14,8 +14,6 @@ import (
 	"github.com/dipesh/bifrost/agent/internal/config"
 )
 
-const dockerLogsTail = 50
-
 type commandRunner func(name string, args ...string) ([]byte, error)
 
 type DockerCollector struct {
@@ -137,11 +135,12 @@ func (c *DockerCollector) listContainers() ([]dockerPSRow, error) {
 func (c *DockerCollector) filterRows(rows []dockerPSRow) []dockerPSRow {
 	filtered := make([]dockerPSRow, 0, len(rows))
 	for _, row := range rows {
-		project := composeProject(parseLabelMap(row.Labels), row.Names)
-		if !allowedProject(project, c.cfg.Docker.IncludeProjects) {
+		name := sanitizeContainerName(row.Names)
+		project := composeProject(parseLabelMap(row.Labels), name)
+		if !includedDockerRuntime(project, name, c.cfg.Docker) {
 			continue
 		}
-		if blockedContainer(row.Names, c.cfg.Docker.ExcludeContainers) {
+		if excludedDockerRuntime(project, name, c.cfg.Docker) {
 			continue
 		}
 		filtered = append(filtered, row)
@@ -319,7 +318,7 @@ func (c *DockerCollector) collectContainerLogs(service client.ServiceSnapshot, c
 	if last, ok := c.lastLogAt[container.ID]; ok && !last.IsZero() {
 		args = append(args, "--since", last.Add(time.Nanosecond).Format(time.RFC3339Nano))
 	} else {
-		args = append(args, "--tail", strconv.Itoa(dockerLogsTail))
+		args = append(args, "--tail", strconv.Itoa(c.cfg.Logs.MaxLinesPerFetch))
 	}
 	args = append(args, container.ID)
 
@@ -414,26 +413,21 @@ func serviceIdentity(runtime dockerRuntime) (string, string, string) {
 	return "svc-" + sanitize(runtime.name), runtime.name, ""
 }
 
-func allowedProject(project string, allowed []string) bool {
-	if len(allowed) == 0 {
+func includedDockerRuntime(project, name string, docker config.DockerConfig) bool {
+	if docker.IncludeAll {
 		return true
 	}
-	if project == "" {
-		return false
-	}
 
-	for _, candidate := range allowed {
-		if project == candidate {
-			return true
-		}
-	}
-
-	return false
+	return stringInList(project, docker.IncludeProjects) || stringInList(name, docker.IncludeContainers)
 }
 
-func blockedContainer(name string, blocked []string) bool {
-	for _, candidate := range blocked {
-		if name == candidate {
+func excludedDockerRuntime(project, name string, docker config.DockerConfig) bool {
+	return stringInList(project, docker.ExcludeProjects) || stringInList(name, docker.ExcludeContainers)
+}
+
+func stringInList(value string, list []string) bool {
+	for _, candidate := range list {
+		if value == strings.TrimSpace(candidate) {
 			return true
 		}
 	}
