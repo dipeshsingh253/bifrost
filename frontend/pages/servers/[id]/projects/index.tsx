@@ -4,20 +4,41 @@ import Link from "next/link";
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { ArrowLeft, Search, Boxes } from "lucide-react";
-import { fetchProjects } from "@/lib/api";
+import {
+  fetchProjects,
+  getApiErrorMessage,
+  isApiErrorCode,
+  isApiErrorStatus,
+  requireAuthenticatedPage,
+  type AuthenticatedPageProps,
+} from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
+import { serverPath, serverProjectPath } from "@/lib/monitoring-routes";
 import type { Server, Service } from "@/lib/types";
 
 type ProjectsListProps = {
   server: Server | null;
   projects: Service[];
-};
+  loadError: string | null;
+} & AuthenticatedPageProps;
 
-export default function ProjectsList({ server, projects }: ProjectsListProps) {
+export default function ProjectsList({ server, projects, currentUser, loadError }: ProjectsListProps) {
   const [search, setSearch] = useState("");
+
+  if (loadError) {
+    return (
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message={loadError}
+          title="Projects are temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
 
   if (!server) {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Server not found.
         </div>
@@ -30,12 +51,12 @@ export default function ProjectsList({ server, projects }: ProjectsListProps) {
   return (
     <>
       <Head>
-        <title>Projects · {server.name} · Bifrost</title>
+        <title>{`Projects · ${server.name} · Bifrost`}</title>
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="mb-6 flex flex-col gap-4">
           <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href={`/servers/${server.id}`} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
+            <Link href={serverPath(server.id)} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
               <ArrowLeft className="h-3.5 w-3.5" />
               {server.name}
             </Link>
@@ -74,7 +95,7 @@ export default function ProjectsList({ server, projects }: ProjectsListProps) {
               return (
                 <Link
                   key={p.id}
-                  href={`/servers/${server.id}/projects/${p.id}`}
+                  href={serverProjectPath(server.id, p.id)}
                   className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
@@ -119,15 +140,27 @@ export default function ProjectsList({ server, projects }: ProjectsListProps) {
 }
 
 export const getServerSideProps: GetServerSideProps<ProjectsListProps> = async (context) => {
-  const id = context.params?.id;
-  if (typeof id !== "string") {
-    return { props: { server: null, projects: [] } };
+  const serverRouteID = context.params?.id;
+  if (typeof serverRouteID !== "string") {
+    return requireAuthenticatedPage(context, async () => ({ server: null, projects: [], loadError: null }));
   }
 
-  try {
-    const data = await fetchProjects(id);
-    return { props: { server: data.server, projects: data.projects } };
-  } catch {
-    return { props: { server: null, projects: [] } };
-  }
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const data = await fetchProjects(serverRouteID, context);
+      return { server: data.server, projects: data.projects, loadError: null };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      if (isApiErrorCode(error, "SERVER_NOT_FOUND")) {
+        return { server: null, projects: [], loadError: null };
+      }
+      return {
+        server: null,
+        projects: [],
+        loadError: getApiErrorMessage(error, "Failed to load projects from the backend."),
+      };
+    }
+  });
 };

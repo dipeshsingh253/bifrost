@@ -11,7 +11,17 @@ import (
 
 func main() {
 	cfg := config.Load()
-	dataStore := store.NewMemoryStore(seed.Data())
+	dataStore, err := store.NewPostgresStore(cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("connect postgres: %v", err)
+	}
+	defer dataStore.Close()
+
+	if cfg.SeedDemoData {
+		if err := dataStore.EnsureSeedData(seed.Data()); err != nil {
+			log.Fatalf("seed postgres: %v", err)
+		}
+	}
 
 	router := httpapi.NewRouter(cfg, dataStore)
 

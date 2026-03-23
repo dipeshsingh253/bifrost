@@ -65,7 +65,12 @@ export type MetricSeries = {
 
 export type ContainerMetricPoint = {
   timestamp: string;
-  [containerName: string]: number | string;
+  [containerKey: string]: number | string;
+};
+
+export type ContainerMetricSeries = {
+  key: string;
+  label: string;
 };
 
 export type ServerBundle = {

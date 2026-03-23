@@ -4,20 +4,41 @@ import Link from "next/link";
 import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { ArrowLeft, Search, Box } from "lucide-react";
-import { fetchStandaloneContainers } from "@/lib/api";
+import {
+  fetchStandaloneContainers,
+  getApiErrorMessage,
+  isApiErrorCode,
+  isApiErrorStatus,
+  requireAuthenticatedPage,
+  type AuthenticatedPageProps,
+} from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
+import { serverContainerPath, serverPath } from "@/lib/monitoring-routes";
 import type { Container, Server } from "@/lib/types";
 
 type ContainersListProps = {
   server: Server | null;
   containers: Container[];
-};
+  loadError: string | null;
+} & AuthenticatedPageProps;
 
-export default function ContainersList({ server, containers }: ContainersListProps) {
+export default function ContainersList({ server, containers, currentUser, loadError }: ContainersListProps) {
   const [search, setSearch] = useState("");
+
+  if (loadError) {
+    return (
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message={loadError}
+          title="Standalone containers are temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
 
   if (!server) {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Server not found.
         </div>
@@ -30,12 +51,12 @@ export default function ContainersList({ server, containers }: ContainersListPro
   return (
     <>
       <Head>
-        <title>Standalone Containers · {server.name} · Bifrost</title>
+        <title>{`Standalone Containers · ${server.name} · Bifrost`}</title>
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="mb-6 flex flex-col gap-4">
           <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href={`/servers/${server.id}`} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
+            <Link href={serverPath(server.id)} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
               <ArrowLeft className="h-3.5 w-3.5" />
               {server.name}
             </Link>
@@ -71,7 +92,7 @@ export default function ContainersList({ server, containers }: ContainersListPro
               return (
                 <Link
                   key={c.id}
-                  href={`/servers/${server.id}/containers/${c.id}`}
+                  href={serverContainerPath(server.id, c.id)}
                   className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-4">
@@ -116,15 +137,27 @@ export default function ContainersList({ server, containers }: ContainersListPro
 }
 
 export const getServerSideProps: GetServerSideProps<ContainersListProps> = async (context) => {
-  const id = context.params?.id;
-  if (typeof id !== "string") {
-    return { props: { server: null, containers: [] } };
+  const serverRouteID = context.params?.id;
+  if (typeof serverRouteID !== "string") {
+    return requireAuthenticatedPage(context, async () => ({ server: null, containers: [], loadError: null }));
   }
 
-  try {
-    const data = await fetchStandaloneContainers(id);
-    return { props: { server: data.server, containers: data.containers } };
-  } catch {
-    return { props: { server: null, containers: [] } };
-  }
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const data = await fetchStandaloneContainers(serverRouteID, context);
+      return { server: data.server, containers: data.containers, loadError: null };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      if (isApiErrorCode(error, "SERVER_NOT_FOUND")) {
+        return { server: null, containers: [], loadError: null };
+      }
+      return {
+        server: null,
+        containers: [],
+        loadError: getApiErrorMessage(error, "Failed to load standalone containers from the backend."),
+      };
+    }
+  });
 };

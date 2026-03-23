@@ -1,9 +1,16 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { useId } from "react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Layout } from "@/components/Layout";
-import { fetchServerBundle } from "@/lib/api";
+import {
+  fetchServerBundle,
+  getApiErrorMessage,
+  isApiErrorCode,
+  isApiErrorStatus,
+  requireAuthenticatedPage,
+  type AuthenticatedPageProps,
+} from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
 import { InfoBar } from "@/components/server/InfoBar";
 import { TimeRangeSelect } from "@/components/server/TimeRangeSelect";
 import { ChartCard } from "@/components/charts/ChartCard";
@@ -13,19 +20,32 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ServicesSection } from "@/components/server/ServicesSection";
 import type { ServerBundle } from "@/lib/types";
+import { buildContainerMetricSeries, filterContainerMetricSeries } from "@/lib/container-metrics";
 
 type ServerDetailProps = {
   bundle: ServerBundle | null;
-};
+  loadError: string | null;
+} & AuthenticatedPageProps;
 
-export default function ServerDetail({ bundle }: ServerDetailProps) {
+export default function ServerDetail({ bundle, currentUser, loadError }: ServerDetailProps) {
   const [timeRange, setTimeRange] = useState("1h");
   const [grid, setGrid] = useState(true);
   const [containerFilter, setContainerFilter] = useState("");
 
+  if (loadError) {
+    return (
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message={loadError}
+          title="System monitoring is temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
+
   if (!bundle) {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           System not found.
         </div>
@@ -44,17 +64,12 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
   const diskReadData = metricByKey.get("disk_read_mb");
   const diskWriteData = metricByKey.get("disk_write_mb");
 
-  // Container names for stacked charts
-  const allContainerNames = Object.keys(containerMetrics.cpu[0] ?? {}).filter(
-    (k) => k !== "timestamp"
+  const allContainerSeries = buildContainerMetricSeries(
+    services.flatMap((service) => service.containers)
   );
-  const filteredContainerNames = containerFilter
-    ? allContainerNames.filter((n) =>
-        n.toLowerCase().includes(containerFilter.toLowerCase())
-      )
-    : allContainerNames;
+  const filteredContainerSeries = filterContainerMetricSeries(allContainerSeries, containerFilter);
 
-  const containerFilterInput = allContainerNames.length > 0 ? (
+  const containerFilterInput = allContainerSeries.length > 0 ? (
     <input
       type="text"
       placeholder="Filter..."
@@ -69,9 +84,9 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
   return (
     <>
       <Head>
-        <title>{server.name} · Bifrost</title>
+        <title>{`${server.name} · Bifrost`}</title>
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
         {/* Navigation + Info */}
         <div className="mb-4">
           <Link
@@ -116,7 +131,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
           )}
 
           {/* Docker CPU Usage */}
-          {filteredContainerNames.length > 0 && (
+          {filteredContainerSeries.length > 0 && (
             <ChartCard
               title="Docker CPU Usage"
               description="Average CPU utilization of containers"
@@ -124,7 +139,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
             >
               <StackedAreaChart
                 data={containerMetrics.cpu}
-                containerNames={filteredContainerNames}
+                series={filteredContainerSeries}
                 unit="%"
                 tickFormatter={(v) => `${v.toFixed(1)}%`}
               />
@@ -145,7 +160,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
           )}
 
           {/* Docker Memory */}
-          {filteredContainerNames.length > 0 && (
+          {filteredContainerSeries.length > 0 && (
             <ChartCard
               title="Docker Memory Usage"
               description="Memory usage of docker containers"
@@ -153,7 +168,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
             >
               <StackedAreaChart
                 data={containerMetrics.memory}
-                containerNames={filteredContainerNames}
+                series={filteredContainerSeries}
                 unit=" MB"
                 tickFormatter={(v) => `${v.toFixed(0)} MB`}
               />
@@ -200,7 +215,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
           )}
 
           {/* Docker Network I/O */}
-          {filteredContainerNames.length > 0 && (
+          {filteredContainerSeries.length > 0 && (
             <ChartCard
               title="Docker Network I/O"
               description="Network traffic of docker containers"
@@ -208,7 +223,7 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
             >
               <StackedAreaChart
                 data={containerMetrics.network}
-                containerNames={filteredContainerNames}
+                series={filteredContainerSeries}
                 unit=" MB/s"
                 tickFormatter={(v) => `${v.toFixed(2)} MB/s`}
               />
@@ -217,24 +232,35 @@ export default function ServerDetail({ bundle }: ServerDetailProps) {
         </div>
 
         {/* ── Services Section ── */}
-        <ServicesSection serverId={server.id as string} services={services} />
+        <ServicesSection serverId={server.id} services={services} />
       </Layout>
     </>
   );
 }
 
 export const getServerSideProps: GetServerSideProps<ServerDetailProps> = async (context) => {
-  const id = context.params?.id;
-  if (typeof id !== "string") {
-    return { props: { bundle: null } };
+  const serverRouteID = context.params?.id;
+  if (typeof serverRouteID !== "string") {
+    return requireAuthenticatedPage(context, async () => ({ bundle: null, loadError: null }));
   }
 
-  try {
-    const bundle = await fetchServerBundle(id);
-    return { props: { bundle } };
-  } catch {
-    return { props: { bundle: null } };
-  }
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const bundle = await fetchServerBundle(serverRouteID, context);
+      return { bundle, loadError: null };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      if (isApiErrorCode(error, "SERVER_NOT_FOUND")) {
+        return { bundle: null, loadError: null };
+      }
+      return {
+        bundle: null,
+        loadError: getApiErrorMessage(error, "Failed to load system details from the backend."),
+      };
+    }
+  });
 };
 
 // ── Dual area chart (for Bandwidth and Disk I/O) ──

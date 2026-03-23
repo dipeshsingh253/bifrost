@@ -1,8 +1,9 @@
-server_id: srv-dev-server
+agent_id: d2ed1ef4-f2ca-4928-8ed6-9a0ab8d48f70
+server_id: 9329fc4b-4d0d-4d3a-8fcb-53f87d7d9e0d
 server_name: dev-server
-tenant_id: tenant-demo
+tenant_id: c4fa4fd6-8101-4c17-a89a-a46ad3caab18
 backend_url: http://localhost:8080
-api_key: demo-agent-key
+enrollment_token: demo-bootstrap-token
 poll_interval_seconds: 10
 
 collectors:
@@ -11,6 +12,12 @@ collectors:
   logs: true
 
 docker:
+  include_all: true
   include_projects: []
+  include_containers: []
+  exclude_projects: []
   exclude_containers:
     - redis
+
+logs:
+  max_lines_per_fetch: 200

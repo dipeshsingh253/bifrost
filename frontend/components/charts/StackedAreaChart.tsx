@@ -9,11 +9,11 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import type { ContainerMetricPoint } from "@/lib/types";
+import type { ContainerMetricPoint, ContainerMetricSeries } from "@/lib/types";
 
 type Props = {
   data: ContainerMetricPoint[];
-  containerNames: string[];
+  series: ContainerMetricSeries[];
   unit?: string;
   height?: number;
   tickFormatter?: (value: number) => string;
@@ -39,7 +39,7 @@ function formatTime(timestamp: string) {
 
 export function StackedAreaChart({
   data,
-  containerNames,
+  series,
   unit = "",
   height = 180,
   tickFormatter,
@@ -59,9 +59,9 @@ export function StackedAreaChart({
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <defs>
-          {containerNames.map((name, i) => (
+          {series.map(({ key }, i) => (
             <linearGradient
-              key={name}
+              key={key}
               id={`${chartId}-${i}`}
               x1="0"
               y1="0"
@@ -105,11 +105,12 @@ export function StackedAreaChart({
           iconType="circle"
           iconSize={8}
         />
-        {containerNames.map((name, i) => (
+        {series.map(({ key, label }, i) => (
           <Area
-            key={name}
+            key={key}
             type="monotone"
-            dataKey={name}
+            dataKey={key}
+            name={label}
             stackId="1"
             stroke={PALETTE[i % PALETTE.length]}
             strokeWidth={1}

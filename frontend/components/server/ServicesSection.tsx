@@ -2,6 +2,12 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, Box, Boxes, Activity, Network } from "lucide-react";
 import type { Service } from "@/lib/types";
+import {
+  serverContainerPath,
+  serverContainersPath,
+  serverProjectPath,
+  serverProjectsPath,
+} from "@/lib/monitoring-routes";
 
 function StatCard({ label, value, icon: Icon, alert }: { label: string; value: number | string; icon: any; alert?: boolean }) {
   return (
@@ -80,7 +86,7 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
           <h3 className="text-lg font-medium text-foreground">Projects ({projects.length})</h3>
           {projects.length > 3 && (
             <Link
-              href={`/servers/${serverId}/projects`}
+              href={serverProjectsPath(serverId)}
               className="group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               View All <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -100,7 +106,7 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
               return (
                 <Link
                   key={p.id}
-                  href={`/servers/${serverId}/projects/${p.id}`}
+                  href={serverProjectPath(serverId, p.id)}
                   className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
@@ -139,7 +145,7 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
             <h3 className="text-lg font-medium text-foreground">Standalone Containers ({standalones.length})</h3>
             {standalones.length > 3 && (
               <Link
-                href={`/servers/${serverId}/containers`}
+                href={serverContainersPath(serverId)}
                 className="group flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 View All <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -154,7 +160,7 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
               return (
                 <Link
                   key={s.id}
-                  href={`/servers/${serverId}/containers/${c.id}`}
+                  href={serverContainerPath(serverId, c.id)}
                   className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3">

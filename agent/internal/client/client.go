@@ -15,6 +15,18 @@ type Client struct {
 	client  *http.Client
 }
 
+type enrollResponse struct {
+	Success bool `json:"success"`
+	Data    struct {
+		AgentID  string `json:"agent_id"`
+		ServerID string `json:"server_id"`
+		APIKey   string `json:"api_key"`
+	} `json:"data"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
+}
+
 type MetricPoint struct {
 	Timestamp time.Time `json:"timestamp"`
 	Value     float64   `json:"value"`
@@ -97,9 +109,50 @@ func New(baseURL, apiKey string) *Client {
 	}
 }
 
-func (c *Client) PushSnapshot(server ServerSnapshot, metrics []MetricPayload, logs []LogPayload) error {
+func (c *Client) Enroll(agentID, serverID string) (string, error) {
+	payload := map[string]string{
+		"agent_id":  agentID,
+		"server_id": serverID,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/agents/enroll", bytes.NewReader(body))
+	if err != nil {
+		return "", err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-Agent-Key", c.apiKey)
+
+	response, err := c.client.Do(request)
+	if err != nil {
+		return "", err
+	}
+	defer response.Body.Close()
+
+	var payloadResponse enrollResponse
+	if err := json.NewDecoder(response.Body).Decode(&payloadResponse); err != nil {
+		return "", err
+	}
+	if response.StatusCode >= 300 || !payloadResponse.Success || payloadResponse.Data.APIKey == "" {
+		if payloadResponse.Error != nil && payloadResponse.Error.Message != "" {
+			return "", fmt.Errorf("%s", payloadResponse.Error.Message)
+		}
+		return "", fmt.Errorf("unexpected status %d", response.StatusCode)
+	}
+	if payloadResponse.Data.AgentID != agentID || payloadResponse.Data.ServerID != serverID {
+		return "", fmt.Errorf("enrollment response identity mismatch")
+	}
+
+	return payloadResponse.Data.APIKey, nil
+}
+
+func (c *Client) PushSnapshot(agentID string, server ServerSnapshot, metrics []MetricPayload, logs []LogPayload) error {
 	payload := map[string]any{
-		"agent_id": server.ID + "-agent",
+		"agent_id": agentID,
 		"server":   server,
 		"metrics":  metrics,
 		"logs":     logs,

@@ -1,8 +1,14 @@
 package collector
 
 import (
+	"errors"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/dipesh/bifrost/agent/internal/client"
+	"github.com/dipesh/bifrost/agent/internal/config"
 )
 
 func TestBuildDockerRuntimeParsesInspectAndStats(t *testing.T) {
@@ -102,5 +108,156 @@ func TestParseHelpers(t *testing.T) {
 	}
 	if inferLogLevel("ERROR failed to connect") != "error" {
 		t.Fatalf("expected error log level inference")
+	}
+}
+
+func TestFilterRowsHonorsIncludeAllAndExcludes(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		Docker: config.DockerConfig{
+			IncludeAll:      true,
+			ExcludeProjects: []string{"zhiro"},
+			ExcludeContainers: []string{
+				"redis",
+			},
+		},
+	})
+
+	rows := []dockerPSRow{
+		{ID: "1", Names: "zhiro-app", Labels: "com.docker.compose.project=zhiro"},
+		{ID: "2", Names: "redis", Labels: ""},
+		{ID: "3", Names: "bifrost-api", Labels: "com.docker.compose.project=bifrost"},
+	}
+
+	filtered := collector.filterRows(rows)
+	if len(filtered) != 1 || filtered[0].ID != "3" {
+		t.Fatalf("expected only bifrost-api to remain, got %+v", filtered)
+	}
+}
+
+func TestFilterRowsHonorsIncludeListsWhenIncludeAllIsFalse(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		Docker: config.DockerConfig{
+			IncludeAll:        false,
+			IncludeProjects:   []string{"bifrost"},
+			IncludeContainers: []string{"standalone-proxy"},
+			ExcludeContainers: []string{"bifrost-worker"},
+		},
+	})
+
+	rows := []dockerPSRow{
+		{ID: "1", Names: "bifrost-api", Labels: "com.docker.compose.project=bifrost"},
+		{ID: "2", Names: "bifrost-worker", Labels: "com.docker.compose.project=bifrost"},
+		{ID: "3", Names: "standalone-proxy", Labels: ""},
+		{ID: "4", Names: "zhiro-app", Labels: "com.docker.compose.project=zhiro"},
+	}
+
+	filtered := collector.filterRows(rows)
+	if len(filtered) != 2 || filtered[0].ID != "1" || filtered[1].ID != "3" {
+		t.Fatalf("expected bifrost-api and standalone-proxy only, got %+v", filtered)
+	}
+}
+
+func TestCollectContainerLogsUsesConfiguredMaxLinesPerFetch(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		ServerID: "srv-1",
+		Logs: config.LogsConfig{
+			MaxLinesPerFetch: 200,
+		},
+	})
+
+	var calledArgs []string
+	collector.run = func(name string, args ...string) ([]byte, error) {
+		calledArgs = append([]string{name}, args...)
+		return []byte("2026-03-22T10:00:00.000000000Z INFO started server\n"), nil
+	}
+
+	lines := collector.collectContainerLogs(client.ServiceSnapshot{ID: "svc-1"}, client.ContainerSnapshot{ID: "ctr-1"})
+	if len(lines) != 1 {
+		t.Fatalf("expected one parsed log line, got %d", len(lines))
+	}
+	if len(calledArgs) < 5 || calledArgs[3] != "--tail" || calledArgs[4] != "200" {
+		t.Fatalf("expected docker logs to use configured tail count, got %+v", calledArgs)
+	}
+}
+
+func TestCollectContainerLogsUsesSinceAfterFirstFetch(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		ServerID: "srv-1",
+		Logs: config.LogsConfig{
+			MaxLinesPerFetch: 200,
+		},
+	})
+
+	var calls [][]string
+	collector.run = func(name string, args ...string) ([]byte, error) {
+		calls = append(calls, append([]string{name}, args...))
+		if len(calls) == 1 {
+			return []byte("2026-03-22T10:00:00.000000000Z INFO started server\n"), nil
+		}
+		return []byte("2026-03-22T10:00:01.000000000Z INFO next line\n"), nil
+	}
+
+	_ = collector.collectContainerLogs(client.ServiceSnapshot{ID: "svc-1"}, client.ContainerSnapshot{ID: "ctr-1"})
+	_ = collector.collectContainerLogs(client.ServiceSnapshot{ID: "svc-1"}, client.ContainerSnapshot{ID: "ctr-1"})
+
+	if len(calls) != 2 {
+		t.Fatalf("expected two docker log calls, got %d", len(calls))
+	}
+	if !containsArgSequence(calls[1], "--since") {
+		t.Fatalf("expected second fetch to use --since, got %+v", calls[1])
+	}
+}
+
+func containsArgSequence(args []string, target string) bool {
+	for _, arg := range args {
+		if arg == target {
+			return true
+		}
+	}
+
+	return false
+}
+
+func TestCollectContainerLogsReturnsNilOnDockerFailure(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		ServerID: "srv-1",
+		Logs: config.LogsConfig{
+			MaxLinesPerFetch: 200,
+		},
+	})
+	collector.run = func(name string, args ...string) ([]byte, error) {
+		return nil, errors.New("docker unavailable")
+	}
+
+	lines := collector.collectContainerLogs(client.ServiceSnapshot{ID: "svc-1"}, client.ContainerSnapshot{ID: "ctr-1"})
+	if lines != nil {
+		t.Fatalf("expected nil logs on docker failure, got %+v", lines)
+	}
+}
+
+func TestCollectContainerLogsTailValueIsStringified(t *testing.T) {
+	collector := NewDockerCollector(config.Config{
+		ServerID: "srv-1",
+		Logs: config.LogsConfig{
+			MaxLinesPerFetch: 75,
+		},
+	})
+
+	var tailValue string
+	collector.run = func(name string, args ...string) ([]byte, error) {
+		for index, arg := range args {
+			if arg == "--tail" && index+1 < len(args) {
+				tailValue = args[index+1]
+			}
+		}
+		return []byte("2026-03-22T10:00:00.000000000Z INFO started server\n"), nil
+	}
+
+	_ = collector.collectContainerLogs(client.ServiceSnapshot{ID: "svc-1"}, client.ContainerSnapshot{ID: "ctr-1"})
+	if tailValue != strconv.Itoa(75) {
+		t.Fatalf("expected tail value 75, got %q", tailValue)
+	}
+	if strings.TrimSpace(tailValue) == "" {
+		t.Fatalf("expected non-empty tail value")
 	}
 }
