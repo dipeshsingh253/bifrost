@@ -7,13 +7,21 @@ import { Layout } from "@/components/Layout";
 import {
   fetchContainerDetail,
   fetchContainerEnv,
+  getApiErrorMessage,
+  isApiErrorCode,
+  isApiErrorStatus,
   fetchContainerLogs,
   fetchContainerMetrics,
+  requireAuthenticatedPage,
+  type AuthenticatedPageProps,
 } from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { BifrostAreaChart } from "@/components/charts/AreaChart";
 import { LogViewer } from "@/components/server/LogViewer";
 import type { Container, LogLine, MetricPoint, Server as ServerType, Service } from "@/lib/types";
+import { getContainerDetailNotFoundKind, type DetailNotFoundKind } from "@/lib/monitoring-not-found";
+import { serverPath, serverProjectPath } from "@/lib/monitoring-routes";
 
 type ContainerDetailProps = {
   server: ServerType | null;
@@ -26,7 +34,9 @@ type ContainerDetailProps = {
   };
   logs: LogLine[];
   env: Record<string, string>;
-};
+  loadError: string | null;
+  notFoundKind: DetailNotFoundKind;
+} & AuthenticatedPageProps;
 
 export default function ContainerDetail({
   server,
@@ -35,11 +45,25 @@ export default function ContainerDetail({
   metrics,
   logs,
   env,
+  loadError,
+  notFoundKind,
+  currentUser,
 }: ContainerDetailProps) {
 
-  if (!server) {
+  if (loadError) {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message={loadError}
+          title="Container monitoring is temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
+
+  if (notFoundKind === "server") {
+    return (
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Server not found.
         </div>
@@ -47,12 +71,23 @@ export default function ContainerDetail({
     );
   }
 
-  if (!container || !project) {
+  if (notFoundKind === "container") {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Container not found.
         </div>
+      </Layout>
+    );
+  }
+
+  if (!server || !container || !project) {
+    return (
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message="Container details could not be resolved."
+          title="Container monitoring is temporarily unavailable."
+        />
       </Layout>
     );
   }
@@ -68,20 +103,20 @@ export default function ContainerDetail({
   return (
     <>
       <Head>
-        <title>{container.name} · {server.name} · Bifrost</title>
+        <title>{`${container.name} · ${server.name} · Bifrost`}</title>
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
         {/* Navigation */}
         <div className="mb-6 flex flex-col gap-4">
           <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href={`/servers/${server.id}`} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
+            <Link href={serverPath(server.id)} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
               <ArrowLeft className="h-3.5 w-3.5" />
               {server.name}
             </Link>
             {!isStandalone && (
               <>
                 <span className="text-border">/</span>
-                <Link href={`/servers/${server.id}/projects/${project.id}`} className="hover:text-foreground transition-colors">
+                <Link href={serverProjectPath(server.id, project.id)} className="hover:text-foreground transition-colors">
                   {project.name}
                 </Link>
               </>
@@ -291,49 +326,67 @@ export default function ContainerDetail({
 }
 
 export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = async (context) => {
-  const id = context.params?.id;
-  const containerId = context.params?.containerId;
-  if (typeof id !== "string" || typeof containerId !== "string") {
-    return {
-      props: {
-        server: null,
-        project: null,
+  const serverRouteID = context.params?.id;
+  const containerRouteID = context.params?.containerId;
+  if (typeof serverRouteID !== "string" || typeof containerRouteID !== "string") {
+    return requireAuthenticatedPage(context, async () => ({
+      server: null,
+      project: null,
         container: null,
         metrics: { cpu: [], memory: [], network: [] },
         logs: [],
         env: {},
-      },
-    };
+        loadError: null,
+        notFoundKind: null,
+      }));
   }
 
-  try {
-    const [detail, metrics, logs, env] = await Promise.all([
-      fetchContainerDetail(id, containerId),
-      fetchContainerMetrics(id, containerId),
-      fetchContainerLogs(id, containerId),
-      fetchContainerEnv(id, containerId),
-    ]);
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const [detail, metrics, logs, env] = await Promise.all([
+        fetchContainerDetail(serverRouteID, containerRouteID, context),
+        fetchContainerMetrics(serverRouteID, containerRouteID, context),
+        fetchContainerLogs(serverRouteID, containerRouteID, context),
+        fetchContainerEnv(serverRouteID, containerRouteID, context),
+      ]);
 
-    return {
-      props: {
+      return {
         server: detail.server ?? null,
         project: detail.project,
         container: detail.container,
         metrics: metrics.metrics,
         logs: logs.logs,
         env: env.env,
-      },
-    };
-  } catch {
-    return {
-      props: {
+        loadError: null,
+        notFoundKind: null,
+      };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      const notFoundKind = getContainerDetailNotFoundKind(error);
+      if (notFoundKind) {
+        return {
+          server: null,
+          project: null,
+          container: null,
+          metrics: { cpu: [], memory: [], network: [] },
+          logs: [],
+          env: {},
+          loadError: null,
+          notFoundKind,
+        };
+      }
+      return {
         server: null,
         project: null,
         container: null,
         metrics: { cpu: [], memory: [], network: [] },
         logs: [],
         env: {},
-      },
-    };
-  }
+        loadError: getApiErrorMessage(error, "Failed to load container details from the backend."),
+        notFoundKind: null,
+      };
+    }
+  });
 };

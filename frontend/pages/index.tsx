@@ -3,7 +3,9 @@ import type { GetServerSideProps } from "next";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 import { Layout } from "@/components/Layout";
-import { fetchServerList } from "@/lib/api";
+import { fetchServerList, getApiErrorMessage, isApiErrorStatus, requireAuthenticatedPage, type AuthenticatedPageProps } from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
+import { serverPath } from "@/lib/monitoring-routes";
 import type { Server, Service } from "@/lib/types";
 import { Bell, MoreHorizontal, RefreshCw, ChevronUp, ChevronDown, Monitor, Cpu, MemoryStick, HardDrive, Wifi, Radio } from "lucide-react";
 
@@ -75,9 +77,10 @@ type ServerListItem = {
 
 type HomeProps = {
   bundles: ServerListItem[];
-};
+  loadError: string | null;
+} & AuthenticatedPageProps;
 
-export default function Home({ bundles }: HomeProps) {
+export default function Home({ bundles, currentUser, loadError }: HomeProps) {
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -134,7 +137,13 @@ export default function Home({ bundles }: HomeProps) {
         <title>Bifrost</title>
         <meta name="description" content="Bifrost server monitoring dashboard" />
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
+        {loadError ? (
+          <MonitoringUnavailableState
+            message={loadError}
+            title="Systems are temporarily unavailable."
+          />
+        ) : (
         <div className="rounded-lg border border-border bg-card">
           {/* Header */}
           <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
@@ -192,6 +201,7 @@ export default function Home({ bundles }: HomeProps) {
             </table>
           </div>
         </div>
+        )}
       </Layout>
     </>
   );
@@ -204,7 +214,7 @@ function ServerRow({ bundle }: { bundle: ServerListItem }) {
   return (
     <tr className="group cursor-pointer transition-colors hover:bg-accent/50">
       <td className="px-4 py-3.5">
-        <Link href={`/servers/${server.id}`} className="flex items-center gap-2.5">
+        <Link href={serverPath(server.id)} className="flex items-center gap-2.5">
           <span
             className={`h-2.5 w-2.5 rounded-full shrink-0 ${isUp ? "bg-success" : "bg-destructive"}`}
           />
@@ -248,11 +258,19 @@ function ServerRow({ bundle }: { bundle: ServerListItem }) {
   );
 }
 
-export const getServerSideProps: GetServerSideProps<HomeProps> = async () => {
-  try {
-    const bundles = await fetchServerList();
-    return { props: { bundles } };
-  } catch {
-    return { props: { bundles: [] } };
-  }
+export const getServerSideProps: GetServerSideProps<HomeProps> = async (context) => {
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const bundles = await fetchServerList(context);
+      return { bundles, loadError: null };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      return {
+        bundles: [],
+        loadError: getApiErrorMessage(error, "Failed to load systems from the backend."),
+      };
+    }
+  });
 };

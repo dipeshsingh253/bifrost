@@ -24,6 +24,56 @@ type User struct {
 	AuthToken string   `json:"-"`
 }
 
+type TenantSummary struct {
+	TenantID    string `json:"tenant_id"`
+	TenantName  string `json:"tenant_name"`
+	AdminCount  int    `json:"admin_count"`
+	ViewerCount int    `json:"viewer_count"`
+}
+
+type ViewerInvite struct {
+	ID              string     `json:"id"`
+	TenantID        string     `json:"tenant_id"`
+	Email           string     `json:"email"`
+	Role            UserRole   `json:"role"`
+	InvitedByUserID string     `json:"invited_by_user_id"`
+	ExpiresAt       time.Time  `json:"expires_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	AcceptedAt      *time.Time `json:"accepted_at,omitempty"`
+	RevokedAt       *time.Time `json:"revoked_at,omitempty"`
+	InviteToken     string     `json:"invite_token,omitempty"`
+	Status          string     `json:"status"`
+}
+
+type ViewerAccount struct {
+	ID         string     `json:"id"`
+	TenantID   string     `json:"tenant_id"`
+	Email      string     `json:"email"`
+	Name       string     `json:"name"`
+	Role       UserRole   `json:"role"`
+	Status     string     `json:"status"`
+	DisabledAt *time.Time `json:"disabled_at,omitempty"`
+}
+
+type ViewerAccess struct {
+	Viewers []ViewerAccount `json:"viewers"`
+	Invites []ViewerInvite  `json:"invites"`
+}
+
+type SystemOnboarding struct {
+	ID              string     `json:"id"`
+	TenantID        string     `json:"tenant_id"`
+	ServerID        string     `json:"server_id"`
+	AgentID         string     `json:"agent_id"`
+	Name            string     `json:"name"`
+	Description     string     `json:"description"`
+	Status          string     `json:"status"`
+	CreatedByUserID string     `json:"created_by_user_id"`
+	CreatedAt       time.Time  `json:"created_at"`
+	ConnectedAt     *time.Time `json:"connected_at,omitempty"`
+	APIKey          string     `json:"api_key,omitempty"`
+}
+
 type Server struct {
 	ID             string    `json:"id"`
 	TenantID       string    `json:"tenant_id"`
@@ -128,11 +178,13 @@ type ServerBundle struct {
 }
 
 type EventLog struct {
-	ID         string    `json:"id"`
-	Timestamp  time.Time `json:"timestamp"`
-	Type       string    `json:"type"`
-	Message    string    `json:"message"`
-	EntityName string    `json:"entityName"`
+	ServiceID   string    `json:"-"`
+	ContainerID string    `json:"-"`
+	ID          string    `json:"id"`
+	Timestamp   time.Time `json:"timestamp"`
+	Type        string    `json:"type"`
+	Message     string    `json:"message"`
+	EntityName  string    `json:"entityName"`
 }
 
 type LogLine struct {

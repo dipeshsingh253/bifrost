@@ -46,6 +46,13 @@ Default local URLs:
 
 ## Agent Config
 
+See [`agent-installation.md`](agent-installation.md) for:
+
+- Docker installation
+- systemd installation
+- generated onboarding commands
+- `config.yaml` fields and filter behavior
+
 Copy `agent/config.example.yaml` to `agent/config.yaml` if needed.
 
 The default local config is set up to:

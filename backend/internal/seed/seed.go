@@ -1,11 +1,29 @@
 package seed
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"time"
 
 	"github.com/dipesh/bifrost/backend/internal/domain"
 	"github.com/dipesh/bifrost/backend/internal/store"
+)
+
+const (
+	TenantIDDemo          = "c4fa4fd6-8101-4c17-a89a-a46ad3caab18"
+	UserIDOwner           = "d0ed9f63-3f89-4d83-9df3-18eeb11ec31a"
+	ServerIDDevServer     = "9329fc4b-4d0d-4d3a-8fcb-53f87d7d9e0d"
+	ServiceIDServiceA     = "9df9d26e-1df6-456d-97b2-c5ecf6ecf18f"
+	ServiceIDSearchStack  = "1f4f333d-b869-4dad-bba4-a687afcc89a7"
+	ServiceIDEdgeProxy    = "95f6f969-df1f-479d-b5f2-a31d9e9afcb9"
+	ContainerIDAPI1       = "34ad2a51-2d8d-4a3c-a05e-a6773d3e4dfc"
+	ContainerIDWorker1    = "98ec4147-cf92-4782-8650-6e95bc0d311d"
+	ContainerIDWeb1       = "9ea6f294-fb37-4334-b567-a90e358f4965"
+	ContainerIDQdrant1    = "c489d2a7-7e2e-473b-9737-c209c6b86e60"
+	ContainerIDIngest1    = "530964e8-83fe-457b-a8cf-e721d93288f0"
+	ContainerIDEdgeProxy1 = "52b8df81-5b68-4ac5-933a-06ab2d5c0c18"
+	AgentIDDemo           = "5b8b7684-f4e3-44a9-8fc6-a58a6110b541"
 )
 
 func Data() store.SeedData {
@@ -22,13 +40,13 @@ func Data() store.SeedData {
 		return result
 	}
 
-	containerPoints := func(names []string, base map[string]float64, variance float64) []domain.ContainerMetricPoint {
+	containerPoints := func(keys []string, base map[string]float64, variance float64) []domain.ContainerMetricPoint {
 		result := make([]domain.ContainerMetricPoint, 0, 20)
 		for i := 19; i >= 0; i-- {
-			values := make(map[string]float64, len(names))
-			for index, name := range names {
+			values := make(map[string]float64, len(keys))
+			for index, key := range keys {
 				offset := float64((i+index)%5) * variance
-				values[name] = base[name] + offset
+				values[key] = base[key] + offset
 			}
 			result = append(result, domain.ContainerMetricPoint{
 				Timestamp: now.Add(-time.Duration(i) * 3 * time.Minute),
@@ -39,8 +57,8 @@ func Data() store.SeedData {
 	}
 
 	server := domain.Server{
-		ID:             "srv-dev-server",
-		TenantID:       "tenant-demo",
+		ID:             ServerIDDevServer,
+		TenantID:       TenantIDDemo,
 		Name:           "dev-server",
 		Hostname:       "ubuntu-bifrost",
 		PublicIP:       "203.0.113.42",
@@ -65,8 +83,8 @@ func Data() store.SeedData {
 
 	apiContainers := []domain.Container{
 		{
-			ID:           "ctr-api-1",
-			ServiceID:    "svc-service-a",
+			ID:           ContainerIDAPI1,
+			ServiceID:    ServiceIDServiceA,
 			Name:         "service-a-backend-1",
 			Image:        "ghcr.io/acme/service-a-backend:latest",
 			Status:       "running",
@@ -80,8 +98,8 @@ func Data() store.SeedData {
 			LastSeenAt:   now,
 		},
 		{
-			ID:           "ctr-worker-1",
-			ServiceID:    "svc-service-a",
+			ID:           ContainerIDWorker1,
+			ServiceID:    ServiceIDServiceA,
 			Name:         "service-a-worker-1",
 			Image:        "ghcr.io/acme/service-a-worker:latest",
 			Status:       "running",
@@ -95,8 +113,8 @@ func Data() store.SeedData {
 			LastSeenAt:   now,
 		},
 		{
-			ID:           "ctr-web-1",
-			ServiceID:    "svc-service-a",
+			ID:           ContainerIDWeb1,
+			ServiceID:    ServiceIDServiceA,
 			Name:         "service-a-frontend-1",
 			Image:        "ghcr.io/acme/service-a-frontend:latest",
 			Status:       "running",
@@ -113,8 +131,8 @@ func Data() store.SeedData {
 
 	searchContainers := []domain.Container{
 		{
-			ID:           "ctr-qdrant-1",
-			ServiceID:    "svc-search-stack",
+			ID:           ContainerIDQdrant1,
+			ServiceID:    ServiceIDSearchStack,
 			Name:         "search-stack-qdrant-1",
 			Image:        "qdrant/qdrant:v1.13.4",
 			Status:       "running",
@@ -128,8 +146,8 @@ func Data() store.SeedData {
 			LastSeenAt:   now,
 		},
 		{
-			ID:           "ctr-ingest-1",
-			ServiceID:    "svc-search-stack",
+			ID:           ContainerIDIngest1,
+			ServiceID:    ServiceIDSearchStack,
 			Name:         "search-stack-ingest-1",
 			Image:        "ghcr.io/acme/search-ingest:latest",
 			Status:       "running",
@@ -146,8 +164,8 @@ func Data() store.SeedData {
 
 	standaloneContainers := []domain.Container{
 		{
-			ID:           "ctr-edge-proxy-1",
-			ServiceID:    "svc-edge-proxy",
+			ID:           ContainerIDEdgeProxy1,
+			ServiceID:    ServiceIDEdgeProxy,
 			Name:         "edge-proxy-1",
 			Image:        "nginx:1.27-alpine",
 			Status:       "running",
@@ -164,8 +182,8 @@ func Data() store.SeedData {
 
 	services := []domain.Service{
 		{
-			ID:               "svc-service-a",
-			TenantID:         "tenant-demo",
+			ID:               ServiceIDServiceA,
+			TenantID:         TenantIDDemo,
 			ServerID:         server.ID,
 			Name:             "service-a",
 			ComposeProject:   "service-a",
@@ -177,8 +195,8 @@ func Data() store.SeedData {
 			LastLogTimestamp: now.Add(-30 * time.Second),
 		},
 		{
-			ID:               "svc-search-stack",
-			TenantID:         "tenant-demo",
+			ID:               ServiceIDSearchStack,
+			TenantID:         TenantIDDemo,
 			ServerID:         server.ID,
 			Name:             "search-stack",
 			ComposeProject:   "search-stack",
@@ -190,8 +208,8 @@ func Data() store.SeedData {
 			LastLogTimestamp: now.Add(-90 * time.Second),
 		},
 		{
-			ID:               "svc-edge-proxy",
-			TenantID:         "tenant-demo",
+			ID:               ServiceIDEdgeProxy,
+			TenantID:         TenantIDDemo,
 			ServerID:         server.ID,
 			Name:             "edge-proxy-1",
 			ComposeProject:   "",
@@ -216,64 +234,64 @@ func Data() store.SeedData {
 		},
 	}
 
-	containerNames := []string{
-		"service-a-backend-1",
-		"service-a-worker-1",
-		"service-a-frontend-1",
-		"search-stack-qdrant-1",
-		"search-stack-ingest-1",
-		"edge-proxy-1",
+	containerIDs := []string{
+		ContainerIDAPI1,
+		ContainerIDWorker1,
+		ContainerIDWeb1,
+		ContainerIDQdrant1,
+		ContainerIDIngest1,
+		ContainerIDEdgeProxy1,
 	}
 
 	containerMetrics := map[string]domain.ContainerMetricBundle{
 		server.ID: {
-			CPU: containerPoints(containerNames, map[string]float64{
-				"service-a-backend-1":   6.8,
-				"service-a-worker-1":    2.7,
-				"service-a-frontend-1":  1.2,
-				"search-stack-qdrant-1": 3.9,
-				"search-stack-ingest-1": 10.4,
-				"edge-proxy-1":          0.5,
+			CPU: containerPoints(containerIDs, map[string]float64{
+				ContainerIDAPI1:       6.8,
+				ContainerIDWorker1:    2.7,
+				ContainerIDWeb1:       1.2,
+				ContainerIDQdrant1:    3.9,
+				ContainerIDIngest1:    10.4,
+				ContainerIDEdgeProxy1: 0.5,
 			}, 0.35),
-			Memory: containerPoints(containerNames, map[string]float64{
-				"service-a-backend-1":   372,
-				"service-a-worker-1":    208,
-				"service-a-frontend-1":  124,
-				"search-stack-qdrant-1": 624,
-				"search-stack-ingest-1": 420,
-				"edge-proxy-1":          48,
+			Memory: containerPoints(containerIDs, map[string]float64{
+				ContainerIDAPI1:       372,
+				ContainerIDWorker1:    208,
+				ContainerIDWeb1:       124,
+				ContainerIDQdrant1:    624,
+				ContainerIDIngest1:    420,
+				ContainerIDEdgeProxy1: 48,
 			}, 8),
-			Network: containerPoints(containerNames, map[string]float64{
-				"service-a-backend-1":   0.11,
-				"service-a-worker-1":    0.03,
-				"service-a-frontend-1":  0.08,
-				"search-stack-qdrant-1": 0.06,
-				"search-stack-ingest-1": 0.09,
-				"edge-proxy-1":          0.04,
+			Network: containerPoints(containerIDs, map[string]float64{
+				ContainerIDAPI1:       0.11,
+				ContainerIDWorker1:    0.03,
+				ContainerIDWeb1:       0.08,
+				ContainerIDQdrant1:    0.06,
+				ContainerIDIngest1:    0.09,
+				ContainerIDEdgeProxy1: 0.04,
 			}, 0.01),
 		},
 	}
 
 	logs := map[string][]domain.LogLine{
-		"svc-service-a": {
-			log("srv-dev-server", "svc-service-a", "ctr-api-1", "service-a-backend-1", "backend", "info", "HTTP server started on :8000", now.Add(-5*time.Minute)),
-			log("srv-dev-server", "svc-service-a", "ctr-worker-1", "service-a-worker-1", "worker", "warn", "retrying failed webhook delivery", now.Add(-4*time.Minute)),
-			log("srv-dev-server", "svc-service-a", "ctr-api-1", "service-a-backend-1", "backend", "info", "completed GET /api/v1/tasks in 42ms", now.Add(-90*time.Second)),
+		ServiceIDServiceA: {
+			log(ServerIDDevServer, ServiceIDServiceA, ContainerIDAPI1, "service-a-backend-1", "backend", "info", "HTTP server started on :8000", now.Add(-5*time.Minute)),
+			log(ServerIDDevServer, ServiceIDServiceA, ContainerIDWorker1, "service-a-worker-1", "worker", "warn", "retrying failed webhook delivery", now.Add(-4*time.Minute)),
+			log(ServerIDDevServer, ServiceIDServiceA, ContainerIDAPI1, "service-a-backend-1", "backend", "info", "completed GET /api/v1/tasks in 42ms", now.Add(-90*time.Second)),
 		},
-		"svc-search-stack": {
-			log("srv-dev-server", "svc-search-stack", "ctr-ingest-1", "search-stack-ingest-1", "ingest", "error", "qdrant index sync exceeded deadline", now.Add(-6*time.Minute)),
-			log("srv-dev-server", "svc-search-stack", "ctr-qdrant-1", "search-stack-qdrant-1", "qdrant", "info", "snapshot completed successfully", now.Add(-3*time.Minute)),
+		ServiceIDSearchStack: {
+			log(ServerIDDevServer, ServiceIDSearchStack, ContainerIDIngest1, "search-stack-ingest-1", "ingest", "error", "qdrant index sync exceeded deadline", now.Add(-6*time.Minute)),
+			log(ServerIDDevServer, ServiceIDSearchStack, ContainerIDQdrant1, "search-stack-qdrant-1", "qdrant", "info", "snapshot completed successfully", now.Add(-3*time.Minute)),
 		},
-		"svc-edge-proxy": {
-			log("srv-dev-server", "svc-edge-proxy", "ctr-edge-proxy-1", "edge-proxy-1", "edge-proxy-1", "info", "Serving static assets on :80", now.Add(-2*time.Minute)),
+		ServiceIDEdgeProxy: {
+			log(ServerIDDevServer, ServiceIDEdgeProxy, ContainerIDEdgeProxy1, "edge-proxy-1", "edge-proxy-1", "info", "Serving static assets on :80", now.Add(-2*time.Minute)),
 		},
 	}
 
 	return store.SeedData{
 		Users: []domain.User{
 			{
-				ID:        "usr-owner",
-				TenantID:  "tenant-demo",
+				ID:        UserIDOwner,
+				TenantID:  TenantIDDemo,
 				Email:     "owner@bifrost.local",
 				Name:      "Bifrost Owner",
 				Password:  "bifrost123",
@@ -288,8 +306,8 @@ func Data() store.SeedData {
 		Logs:             logs,
 		Agents: []domain.Agent{
 			{
-				ID:         "agt-demo",
-				TenantID:   "tenant-demo",
+				ID:         AgentIDDemo,
+				TenantID:   TenantIDDemo,
 				ServerID:   server.ID,
 				Name:       "demo-agent",
 				APIKey:     "demo-agent-key",
@@ -305,7 +323,7 @@ func Data() store.SeedData {
 
 func log(serverID, serviceID, containerID, containerName, serviceTag, level, message string, timestamp time.Time) domain.LogLine {
 	return domain.LogLine{
-		ID:            fmt.Sprintf("%s-%d", containerID, timestamp.Unix()),
+		ID:            mustSeedUUIDString(),
 		ServerID:      serverID,
 		ServiceID:     serviceID,
 		ContainerID:   containerID,
@@ -315,4 +333,22 @@ func log(serverID, serviceID, containerID, containerName, serviceTag, level, mes
 		Message:       message,
 		Timestamp:     timestamp,
 	}
+}
+
+func mustSeedUUIDString() string {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		panic(err)
+	}
+
+	bytes[6] = (bytes[6] & 0x0f) | 0x40
+	bytes[8] = (bytes[8] & 0x3f) | 0x80
+
+	return fmt.Sprintf("%s-%s-%s-%s-%s",
+		hex.EncodeToString(bytes[0:4]),
+		hex.EncodeToString(bytes[4:6]),
+		hex.EncodeToString(bytes[6:8]),
+		hex.EncodeToString(bytes[8:10]),
+		hex.EncodeToString(bytes[10:16]),
+	)
 }

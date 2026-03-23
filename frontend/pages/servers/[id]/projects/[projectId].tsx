@@ -1,6 +1,6 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Activity, Box, RefreshCw, BarChart2 } from "lucide-react";
 
@@ -8,14 +8,23 @@ import { Layout } from "@/components/Layout";
 import {
   fetchProjectDetail,
   fetchProjectEvents,
+  getApiErrorMessage,
+  isApiErrorCode,
+  isApiErrorStatus,
   fetchProjectLogs,
   fetchProjectMetrics,
+  requireAuthenticatedPage,
+  type AuthenticatedPageProps,
 } from "@/lib/api";
+import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
 import { ChartCard } from "@/components/charts/ChartCard";
 import { StackedAreaChart } from "@/components/charts/StackedAreaChart";
 import { LogViewer } from "@/components/server/LogViewer";
 import { EventsList } from "@/components/server/EventsList";
 import type { EventLog, LogLine, Server, ServerBundle, Service } from "@/lib/types";
+import { buildContainerMetricSeries } from "@/lib/container-metrics";
+import { getProjectDetailNotFoundKind, type DetailNotFoundKind } from "@/lib/monitoring-not-found";
+import { serverContainerPath, serverPath } from "@/lib/monitoring-routes";
 
 type ProjectDetailProps = {
   server: Server | null;
@@ -23,7 +32,9 @@ type ProjectDetailProps = {
   containerMetrics: ServerBundle["containerMetrics"];
   logs: LogLine[];
   events: EventLog[];
-};
+  loadError: string | null;
+  notFoundKind: DetailNotFoundKind;
+} & AuthenticatedPageProps;
 
 export default function ProjectDetail({
   server,
@@ -31,12 +42,26 @@ export default function ProjectDetail({
   containerMetrics,
   logs,
   events,
+  loadError,
+  notFoundKind,
+  currentUser,
 }: ProjectDetailProps) {
   const [selectedService, setSelectedService] = useState<string | null>(null);
 
-  if (!server) {
+  if (loadError) {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message={loadError}
+          title="Project monitoring is temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
+
+  if (notFoundKind === "server") {
+    return (
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Server not found.
         </div>
@@ -44,9 +69,9 @@ export default function ProjectDetail({
     );
   }
 
-  if (!project) {
+  if (notFoundKind === "project") {
     return (
-      <Layout>
+      <Layout currentUser={currentUser}>
         <div className="flex items-center justify-center py-24 text-muted-foreground">
           Project not found.
         </div>
@@ -54,8 +79,19 @@ export default function ProjectDetail({
     );
   }
 
+  if (!server || !project) {
+    return (
+      <Layout currentUser={currentUser}>
+        <MonitoringUnavailableState
+          message="Project details could not be resolved."
+          title="Project monitoring is temporarily unavailable."
+        />
+      </Layout>
+    );
+  }
+
   // Compute metrics
-  const containerNames = project.containers.map(c => c.name);
+  const containerSeries = buildContainerMetricSeries(project.containers);
   
   // Service grouping
   const servicesMap = new Map<string, {
@@ -98,13 +134,13 @@ export default function ProjectDetail({
   return (
     <>
       <Head>
-        <title>{project.name} · {server.name} · Bifrost</title>
+        <title>{`${project.name} · ${server.name} · Bifrost`}</title>
       </Head>
-      <Layout>
+      <Layout currentUser={currentUser}>
         {/* Navigation */}
         <div className="mb-6 flex flex-col gap-4">
           <nav className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <Link href={`/servers/${server.id}`} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
+            <Link href={serverPath(server.id)} className="hover:text-foreground transition-colors inline-flex items-center gap-1">
               <ArrowLeft className="h-3.5 w-3.5" />
               {server.name}
             </Link>
@@ -176,7 +212,7 @@ export default function ProjectDetail({
             <ChartCard title="CPU Usage" description="Project containers CPU footprint">
               <StackedAreaChart
                 data={containerMetrics.cpu}
-                containerNames={containerNames}
+                series={containerSeries}
                 unit="%"
                 tickFormatter={(v) => `${v.toFixed(1)}%`}
               />
@@ -184,7 +220,7 @@ export default function ProjectDetail({
             <ChartCard title="Memory Usage" description="Project containers memory footprint">
               <StackedAreaChart
                 data={containerMetrics.memory}
-                containerNames={containerNames}
+                series={containerSeries}
                 unit=" MB"
                 tickFormatter={(v) => `${v.toFixed(0)} MB`}
               />
@@ -250,7 +286,7 @@ export default function ProjectDetail({
                   return (
                     <Link
                       key={c.id}
-                      href={`/servers/${server.id}/containers/${c.id}`}
+                      href={serverContainerPath(server.id, c.id)}
                       className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-md border border-border bg-card px-4 py-3 hover:bg-accent/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-3">
@@ -301,46 +337,63 @@ export default function ProjectDetail({
 }
 
 export const getServerSideProps: GetServerSideProps<ProjectDetailProps> = async (context) => {
-  const id = context.params?.id;
-  const projectId = context.params?.projectId;
-  if (typeof id !== "string" || typeof projectId !== "string") {
-    return {
-      props: {
+  const serverRouteID = context.params?.id;
+  const projectRouteID = context.params?.projectId;
+  if (typeof serverRouteID !== "string" || typeof projectRouteID !== "string") {
+    return requireAuthenticatedPage(context, async () => ({
         server: null,
         project: null,
         containerMetrics: { cpu: [], memory: [], network: [] },
         logs: [],
         events: [],
-      },
-    };
+        loadError: null,
+        notFoundKind: null,
+      }));
   }
 
-  try {
-    const [detail, metrics, logs, events] = await Promise.all([
-      fetchProjectDetail(id, projectId),
-      fetchProjectMetrics(id, projectId),
-      fetchProjectLogs(id, projectId),
-      fetchProjectEvents(id, projectId),
-    ]);
+  return requireAuthenticatedPage(context, async () => {
+    try {
+      const [detail, metrics, logs, events] = await Promise.all([
+        fetchProjectDetail(serverRouteID, projectRouteID, context),
+        fetchProjectMetrics(serverRouteID, projectRouteID, context),
+        fetchProjectLogs(serverRouteID, projectRouteID, context),
+        fetchProjectEvents(serverRouteID, projectRouteID, context),
+      ]);
 
-    return {
-      props: {
+      return {
         server: detail.server,
         project: detail.project,
         containerMetrics: metrics.metrics,
         logs: logs.logs,
         events: events.events,
-      },
-    };
-  } catch {
-    return {
-      props: {
+        loadError: null,
+        notFoundKind: null,
+      };
+    } catch (error) {
+      if (isApiErrorStatus(error, 401)) {
+        throw error;
+      }
+      const notFoundKind = getProjectDetailNotFoundKind(error);
+      if (notFoundKind) {
+        return {
+          server: null,
+          project: null,
+          containerMetrics: { cpu: [], memory: [], network: [] },
+          logs: [],
+          events: [],
+          loadError: null,
+          notFoundKind,
+        };
+      }
+      return {
         server: null,
         project: null,
         containerMetrics: { cpu: [], memory: [], network: [] },
         logs: [],
         events: [],
-      },
-    };
-  }
+        loadError: getApiErrorMessage(error, "Failed to load project details from the backend."),
+        notFoundKind: null,
+      };
+    }
+  });
 };
