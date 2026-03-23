@@ -547,6 +547,8 @@ func (s *PostgresStore) ViewerAccess(tenantID string) (domain.ViewerAccess, erro
 		FROM user_invites
 		WHERE tenant_id = $1
 		  AND accepted_at IS NULL
+		  AND revoked_at IS NULL
+		  AND expires_at > NOW()
 		ORDER BY created_at DESC
 	`, tenantID)
 	if err != nil {

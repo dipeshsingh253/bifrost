@@ -53,9 +53,13 @@ docker run -d \
   --name bifrost-agent \
   --restart unless-stopped \
   --network host \
+  --pid host \
+  --uts host \
+  -v /:/hostfs:ro \
   -v bifrost-agent-data:/var/lib/bifrost-agent \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
   -e BIFROST_CONFIG_PATH='/var/lib/bifrost-agent/config.yaml' \
+  -e BIFROST_HOST_ROOT='/hostfs' \
   -e BIFROST_AGENT_ID='...' \
   -e BIFROST_SERVER_ID='...' \
   -e BIFROST_SERVER_NAME='...' \
@@ -71,6 +75,7 @@ Notes:
 - The first boot self-enrolls using `enrollment_token`
 - After enrollment, the agent persists the rotated long-lived `api_key`
 - The Docker socket is mounted read-only so the agent can inspect containers and collect logs
+- The host root is bind-mounted and the container joins the host PID/UTS namespaces so host metrics reflect the real machine instead of the container
 
 If you previously ran a broken Docker install, clear old state before retrying:
 

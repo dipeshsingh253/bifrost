@@ -210,6 +210,9 @@ func (s *MemoryStore) ViewerAccess(tenantID string) (domain.ViewerAccess, error)
 			continue
 		}
 		invite.Status = inviteLifecycleStatus(invite.AcceptedAt, invite.RevokedAt, invite.ExpiresAt)
+		if invite.Status != "pending" {
+			continue
+		}
 		access.Invites = append(access.Invites, invite)
 	}
 

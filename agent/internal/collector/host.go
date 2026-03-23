@@ -20,7 +20,28 @@ const (
 	initialSampleDelay  = 250 * time.Millisecond
 	diskSectorSizeBytes = 512
 	megabyteDivisor     = 1024 * 1024
+	hostRootEnv         = "BIFROST_HOST_ROOT"
 )
+
+func hostRootPath() string {
+	return strings.TrimRight(strings.TrimSpace(os.Getenv(hostRootEnv)), "/")
+}
+
+// When the agent runs in Docker, BIFROST_HOST_ROOT can point at a bind-mounted
+// copy of the host filesystem so host collectors keep reading real machine data.
+func hostPath(root, path string) string {
+	trimmed := strings.TrimSpace(path)
+	if root == "" {
+		if trimmed == "" {
+			return "/"
+		}
+		return trimmed
+	}
+	if trimmed == "" || trimmed == "/" {
+		return root
+	}
+	return root + "/" + strings.TrimLeft(trimmed, "/")
+}
 
 type HostCollector struct {
 	lastCountersAt time.Time
@@ -61,15 +82,16 @@ func NewHostCollector() *HostCollector {
 
 func (c *HostCollector) Collect(cfg config.Config) (client.ServerSnapshot, []client.MetricPayload, error) {
 	collectedAt := time.Now().UTC()
-	loadAverage := readLoadAverage()
-	memory := readMemoryInfo()
-	diskUsage, totalDiskGB := readDiskUsage("/")
-	uptime := readUptime()
+	hostRoot := hostRootPath()
+	loadAverage := readLoadAverage(hostRoot)
+	memory := readMemoryInfo(hostRoot)
+	diskUsage, totalDiskGB := readDiskUsage(hostPath(hostRoot, "/"))
+	uptime := readUptime(hostRoot)
 	hostname, _ := os.Hostname()
 	publicIP := detectPrimaryIP()
-	osName := readOSName()
-	kernel := readKernelVersion()
-	cpu := readCPUInfo()
+	osName := readOSName(hostRoot)
+	kernel := readKernelVersion(hostRoot)
+	cpu := readCPUInfo(hostRoot)
 
 	cpuUsagePct, networkRXMB, networkTXMB, diskReadMB, diskWriteMB := c.readRates(collectedAt)
 
@@ -102,9 +124,10 @@ func (c *HostCollector) Collect(cfg config.Config) (client.ServerSnapshot, []cli
 }
 
 func (c *HostCollector) readRates(now time.Time) (float64, float64, float64, float64, float64) {
-	currentCPU := readCPUCounters()
-	currentNetwork := readNetworkCounters()
-	currentDisk := readDiskCounters()
+	hostRoot := hostRootPath()
+	currentCPU := readCPUCounters(hostRoot)
+	currentNetwork := readNetworkCounters(hostRoot)
+	currentDisk := readDiskCounters(hostRoot)
 
 	if c.lastCountersAt.IsZero() {
 		c.lastCPU = currentCPU
@@ -114,9 +137,9 @@ func (c *HostCollector) readRates(now time.Time) (float64, float64, float64, flo
 
 		time.Sleep(initialSampleDelay)
 		now = time.Now().UTC()
-		currentCPU = readCPUCounters()
-		currentNetwork = readNetworkCounters()
-		currentDisk = readDiskCounters()
+		currentCPU = readCPUCounters(hostRoot)
+		currentNetwork = readNetworkCounters(hostRoot)
+		currentDisk = readDiskCounters(hostRoot)
 	}
 
 	elapsedSeconds := now.Sub(c.lastCountersAt).Seconds()
@@ -168,8 +191,8 @@ func buildHostMetrics(serverID string, now time.Time, server client.ServerSnapsh
 	return metrics
 }
 
-func readLoadAverage() string {
-	content, err := os.ReadFile("/proc/loadavg")
+func readLoadAverage(hostRoot string) string {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/loadavg"))
 	if err != nil {
 		return "0.00 0.00 0.00"
 	}
@@ -182,8 +205,8 @@ func readLoadAverage() string {
 	return strings.Join(parts[:3], " ")
 }
 
-func readMemoryInfo() memoryInfo {
-	content, err := os.ReadFile("/proc/meminfo")
+func readMemoryInfo(hostRoot string) memoryInfo {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/meminfo"))
 	if err != nil {
 		return memoryInfo{}
 	}
@@ -238,8 +261,8 @@ func readDiskUsage(path string) (float64, float64) {
 	return (used / total) * 100, total / megabyteDivisor / 1024
 }
 
-func readUptime() int64 {
-	content, err := os.ReadFile("/proc/uptime")
+func readUptime(hostRoot string) int64 {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/uptime"))
 	if err != nil {
 		return 0
 	}
@@ -257,8 +280,8 @@ func readUptime() int64 {
 	return int64(value)
 }
 
-func readCPUCounters() cpuCounters {
-	content, err := os.ReadFile("/proc/stat")
+func readCPUCounters(hostRoot string) cpuCounters {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/stat"))
 	if err != nil {
 		return cpuCounters{}
 	}
@@ -305,8 +328,8 @@ func calculateCPUUsage(previous, current cpuCounters) float64 {
 	return ((totalDelta - idleDelta) / totalDelta) * 100
 }
 
-func readNetworkCounters() networkCounters {
-	content, err := os.ReadFile("/proc/net/dev")
+func readNetworkCounters(hostRoot string) networkCounters {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/net/dev"))
 	if err != nil {
 		return networkCounters{}
 	}
@@ -352,18 +375,18 @@ func parseNetworkCounters(content []byte) networkCounters {
 	return total
 }
 
-func readDiskCounters() diskCounters {
-	content, err := os.ReadFile("/proc/diskstats")
+func readDiskCounters(hostRoot string) diskCounters {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/diskstats"))
 	if err != nil {
 		return diskCounters{}
 	}
 
-	devices := blockDevices()
+	devices := blockDevices(hostRoot)
 	return parseDiskCounters(content, devices)
 }
 
-func blockDevices() map[string]struct{} {
-	entries, err := os.ReadDir("/sys/block")
+func blockDevices(hostRoot string) map[string]struct{} {
+	entries, err := os.ReadDir(hostPath(hostRoot, "/sys/block"))
 	if err != nil {
 		return map[string]struct{}{}
 	}
@@ -416,8 +439,8 @@ func bytesRateToMB(previous, current uint64, elapsedSeconds float64) float64 {
 	return (float64(current-previous) / megabyteDivisor) / elapsedSeconds
 }
 
-func readOSName() string {
-	content, err := os.ReadFile("/etc/os-release")
+func readOSName(hostRoot string) string {
+	content, err := os.ReadFile(hostPath(hostRoot, "/etc/os-release"))
 	if err != nil {
 		return runtime.GOOS
 	}
@@ -454,8 +477,8 @@ func parseOSRelease(content []byte, key string) string {
 	return ""
 }
 
-func readKernelVersion() string {
-	content, err := os.ReadFile("/proc/sys/kernel/osrelease")
+func readKernelVersion(hostRoot string) string {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/sys/kernel/osrelease"))
 	if err != nil {
 		return runtime.GOARCH
 	}
@@ -463,8 +486,8 @@ func readKernelVersion() string {
 	return strings.TrimSpace(string(content))
 }
 
-func readCPUInfo() cpuInfo {
-	content, err := os.ReadFile("/proc/cpuinfo")
+func readCPUInfo(hostRoot string) cpuInfo {
+	content, err := os.ReadFile(hostPath(hostRoot, "/proc/cpuinfo"))
 	if err != nil {
 		return cpuInfo{
 			model:   runtime.GOARCH,

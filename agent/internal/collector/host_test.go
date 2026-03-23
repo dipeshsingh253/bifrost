@@ -95,3 +95,15 @@ Inter-|   Receive                                                |  Transmit
 		t.Fatalf("expected whole-disk counters only, got read=%d write=%d", disk.readBytes, disk.writeBytes)
 	}
 }
+
+func TestHostPathUsesMountedHostRootWhenConfigured(t *testing.T) {
+	if got := hostPath("", "/proc/stat"); got != "/proc/stat" {
+		t.Fatalf("expected default host path to stay unchanged, got %q", got)
+	}
+	if got := hostPath("/hostfs", "/proc/stat"); got != "/hostfs/proc/stat" {
+		t.Fatalf("expected mounted host path, got %q", got)
+	}
+	if got := hostPath("/hostfs", "/"); got != "/hostfs" {
+		t.Fatalf("expected host root path, got %q", got)
+	}
+}

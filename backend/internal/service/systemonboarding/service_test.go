@@ -68,6 +68,12 @@ func TestCreateGetAndListRoundTripSystemOnboardingView(t *testing.T) {
 	if !strings.Contains(created.DockerRunCommand, "BIFROST_AGENT_ID='"+created.AgentID+"'") {
 		t.Fatalf("expected docker command to include agent env")
 	}
+	if !strings.Contains(created.DockerRunCommand, "--pid host") || !strings.Contains(created.DockerRunCommand, "--uts host") {
+		t.Fatalf("expected docker command to join the host pid and uts namespaces, got %q", created.DockerRunCommand)
+	}
+	if !strings.Contains(created.DockerRunCommand, "-v /:/hostfs:ro") || !strings.Contains(created.DockerRunCommand, "BIFROST_HOST_ROOT='/hostfs'") {
+		t.Fatalf("expected docker command to mount the host filesystem for host metrics, got %q", created.DockerRunCommand)
+	}
 	if !strings.Contains(created.DockerRunCommand, "'bifrost-agent:latest'") {
 		t.Fatalf("expected docker command to use the configured agent image, got %q", created.DockerRunCommand)
 	}
