@@ -20,8 +20,8 @@ func currentEnvironment() map[string]struct{} {
 	protected := make(map[string]struct{})
 
 	for _, entry := range os.Environ() {
-		key, value, ok := strings.Cut(entry, "=")
-		if ok && strings.TrimSpace(value) != "" {
+		key, _, ok := strings.Cut(entry, "=")
+		if ok && key != "" {
 			protected[key] = struct{}{}
 		}
 	}
@@ -80,6 +80,8 @@ func parseDotEnvLine(line string) (string, string, bool) {
 		return key, "", true
 	}
 
+	value = stripInlineComment(value)
+
 	if strings.HasPrefix(value, "\"") {
 		unquoted, err := strconv.Unquote(value)
 		if err == nil {
@@ -90,9 +92,30 @@ func parseDotEnvLine(line string) (string, string, bool) {
 		return key, value[1 : len(value)-1], true
 	}
 
-	if commentIndex := strings.Index(value, " #"); commentIndex >= 0 {
-		value = strings.TrimSpace(value[:commentIndex])
+	return key, value, true
+}
+
+func stripInlineComment(value string) string {
+	inSingleQuote := false
+	inDoubleQuote := false
+	escaped := false
+
+	for i, r := range value {
+		switch {
+		case escaped:
+			escaped = false
+		case r == '\\' && inDoubleQuote:
+			escaped = true
+		case r == '\'' && !inDoubleQuote:
+			inSingleQuote = !inSingleQuote
+		case r == '"' && !inSingleQuote:
+			inDoubleQuote = !inDoubleQuote
+		case r == '#' && !inSingleQuote && !inDoubleQuote:
+			if i == 0 || value[i-1] == ' ' || value[i-1] == '\t' {
+				return strings.TrimSpace(value[:i])
+			}
+		}
 	}
 
-	return key, value, true
+	return value
 }
