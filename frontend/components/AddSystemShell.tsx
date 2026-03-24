@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { ArrowLeft, Check, Copy, FileCode2, LoaderCircle, RefreshCw, Server, TerminalSquare, X } from "lucide-react";
 
-import { getApiErrorMessage } from "@/lib/api";
+import { getApiErrorMessage, readBrowserApiPayload } from "@/lib/api";
 import {
   filterPendingSystems,
   getConnectedSystemRedirectPath,
@@ -18,14 +18,6 @@ type AddSystemShellProps = {
   onClose: () => void;
 };
 
-type ApiEnvelope<T> = {
-  success: boolean;
-  data?: T;
-  error?: {
-    message?: string;
-  };
-};
-
 const shellSteps = [
   { key: "details", title: "System Details", icon: Server },
   { key: "config", title: "Quick Install", icon: TerminalSquare },
@@ -34,14 +26,6 @@ const shellSteps = [
 
 const inputClassName =
   "h-11 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground outline-none transition focus:ring-1 focus:ring-ring";
-
-async function readPayload<T>(response: Response): Promise<T> {
-  const payload = (await response.json()) as ApiEnvelope<T>;
-  if (!response.ok || !payload.success || payload.data === undefined) {
-    throw new Error(payload.error?.message || "Request failed");
-  }
-  return payload.data;
-}
 
 export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
   const router = useRouter();
@@ -90,7 +74,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
 
     try {
       const response = await fetch("/api/admin/systems");
-      const payload = await readPayload<SystemOnboardingRecord[]>(response);
+      const payload = await readBrowserApiPayload<SystemOnboardingRecord[]>(
+        response,
+        "Failed to load pending systems"
+      );
       setPendingSystems(filterPendingSystems(payload));
     } catch (loadError) {
       setError(getApiErrorMessage(loadError, "Failed to load pending systems"));
@@ -107,7 +94,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
 
       try {
         const response = await fetch(`/api/admin/systems/${systemID}`);
-        const payload = await readPayload<SystemOnboardingRecord>(response);
+        const payload = await readBrowserApiPayload<SystemOnboardingRecord>(
+          response,
+          "Failed to refresh system status"
+        );
 
         setActiveSystem((current) => (current ? { ...current, ...payload } : payload));
         setPendingSystems((current) => current.filter((item) => item.id !== payload.id));
@@ -194,7 +184,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
         }),
       });
 
-      const payload = await readPayload<SystemOnboardingRecord>(response);
+      const payload = await readBrowserApiPayload<SystemOnboardingRecord>(
+        response,
+        "Failed to create system"
+      );
       setActiveSystem(payload);
       setSelectedInstallTab(preferredInstallMode);
       setPendingSystems((current) => [
@@ -224,7 +217,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
 
     try {
       const response = await fetch(`/api/admin/systems/${systemID}`);
-      const payload = await readPayload<SystemOnboardingRecord>(response);
+      const payload = await readBrowserApiPayload<SystemOnboardingRecord>(
+        response,
+        "Failed to load pending system"
+      );
       setActiveSystem(payload);
       setStep(getResumeFlowStep(payload));
     } catch (resumeError) {
@@ -244,7 +240,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
       const response = await fetch(`/api/admin/systems/${systemID}/reissue`, {
         method: "POST",
       });
-      const payload = await readPayload<SystemOnboardingRecord>(response);
+      const payload = await readBrowserApiPayload<SystemOnboardingRecord>(
+        response,
+        "Failed to reissue system credentials"
+      );
       setActiveSystem(payload);
       setPendingSystems((current) => [
         {
@@ -285,7 +284,10 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
       const response = await fetch(`/api/admin/systems/${systemID}/cancel`, {
         method: "POST",
       });
-      await readPayload<{ status: string }>(response);
+      await readBrowserApiPayload<{ status: string }>(
+        response,
+        "Failed to cancel system setup"
+      );
       setPendingSystems((current) => current.filter((item) => item.id !== systemID));
       setLastCheckedAt(null);
 

@@ -236,6 +236,74 @@ func TestLoginSetsCookieForExistingUser(t *testing.T) {
 	}
 }
 
+func TestAuthenticatedUserCanUpdateProfileName(t *testing.T) {
+	router := NewRouter(config.Config{}, store.NewMemoryStore(seed.Data()))
+
+	updateBody := `{"name":"Updated Owner"}`
+	updateRequest := httptest.NewRequest(http.MethodPatch, "/api/v1/me", strings.NewReader(updateBody))
+	updateRequest.Header.Set("Authorization", "Bearer demo-owner-token")
+	updateRequest.Header.Set("Content-Type", "application/json")
+	updateResponse := httptest.NewRecorder()
+	router.ServeHTTP(updateResponse, updateRequest)
+
+	if updateResponse.Code != http.StatusOK {
+		t.Fatalf("expected profile update status 200, got %d", updateResponse.Code)
+	}
+
+	sessionRequest := httptest.NewRequest(http.MethodGet, "/api/v1/auth/session", nil)
+	sessionRequest.Header.Set("Authorization", "Bearer demo-owner-token")
+	sessionResponse := httptest.NewRecorder()
+	router.ServeHTTP(sessionResponse, sessionRequest)
+
+	var payload struct {
+		Success bool `json:"success"`
+		Data    struct {
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(sessionResponse.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode session payload: %v", err)
+	}
+	if payload.Data.Name != "Updated Owner" {
+		t.Fatalf("expected updated profile name, got %q", payload.Data.Name)
+	}
+}
+
+func TestAuthenticatedUserCanChangePassword(t *testing.T) {
+	router := NewRouter(config.Config{}, store.NewMemoryStore(seed.Data()))
+
+	changeBody := `{"current_password":"bifrost123","new_password":"changed123"}`
+	changeRequest := httptest.NewRequest(http.MethodPost, "/api/v1/me/password", strings.NewReader(changeBody))
+	changeRequest.Header.Set("Authorization", "Bearer demo-owner-token")
+	changeRequest.Header.Set("Content-Type", "application/json")
+	changeResponse := httptest.NewRecorder()
+	router.ServeHTTP(changeResponse, changeRequest)
+
+	if changeResponse.Code != http.StatusOK {
+		t.Fatalf("expected password change status 200, got %d", changeResponse.Code)
+	}
+
+	oldLoginBody := `{"email":"owner@bifrost.local","password":"bifrost123"}`
+	oldLoginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(oldLoginBody))
+	oldLoginRequest.Header.Set("Content-Type", "application/json")
+	oldLoginResponse := httptest.NewRecorder()
+	router.ServeHTTP(oldLoginResponse, oldLoginRequest)
+
+	if oldLoginResponse.Code != http.StatusUnauthorized {
+		t.Fatalf("expected old password login to fail, got %d", oldLoginResponse.Code)
+	}
+
+	newLoginBody := `{"email":"owner@bifrost.local","password":"changed123"}`
+	newLoginRequest := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", strings.NewReader(newLoginBody))
+	newLoginRequest.Header.Set("Content-Type", "application/json")
+	newLoginResponse := httptest.NewRecorder()
+	router.ServeHTTP(newLoginResponse, newLoginRequest)
+
+	if newLoginResponse.Code != http.StatusOK {
+		t.Fatalf("expected new password login to succeed, got %d", newLoginResponse.Code)
+	}
+}
+
 func TestAdminSummaryAllowsAdminAndBlocksViewer(t *testing.T) {
 	router := NewRouter(config.Config{}, store.NewMemoryStore(seedWithViewer()))
 

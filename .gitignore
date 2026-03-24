@@ -5,7 +5,13 @@ node_modules
 dist
 coverage
 *.log
+*.tsbuildinfo
 .env
+.env.local
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
 backend/tmp
 beszel-dashboard.png
 beszel-server-page.png

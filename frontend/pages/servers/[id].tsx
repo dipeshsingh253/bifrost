@@ -10,6 +10,7 @@ import {
   requireAuthenticatedPage,
   type AuthenticatedPageProps,
 } from "@/lib/api";
+import { readAppearanceSettings } from "@/lib/appearance";
 import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
 import { InfoBar } from "@/components/server/InfoBar";
 import { TimeRangeSelect } from "@/components/server/TimeRangeSelect";
@@ -28,7 +29,7 @@ type ServerDetailProps = {
 } & AuthenticatedPageProps;
 
 export default function ServerDetail({ bundle, currentUser, loadError }: ServerDetailProps) {
-  const [timeRange, setTimeRange] = useState("1h");
+  const [timeRange, setTimeRange] = useState(() => readAppearanceSettings().defaultTimeRange);
   const [grid, setGrid] = useState(true);
   const [containerFilter, setContainerFilter] = useState("");
 
@@ -107,7 +108,9 @@ export default function ServerDetail({ bundle, currentUser, loadError }: ServerD
             <div className="shrink-0">
               <TimeRangeSelect
                 selectedTime={timeRange}
-                onTimeChange={setTimeRange}
+                onTimeChange={(nextTimeRange) =>
+                  setTimeRange(nextTimeRange as typeof timeRange)
+                }
                 grid={grid}
                 onGridToggle={() => setGrid((g) => !g)}
               />

@@ -10,16 +10,13 @@ import {
   fetchOptionalSession,
   getApiErrorMessage,
   isApiRequestError,
+  readBrowserApiPayload,
   type ViewerInvite,
 } from "@/lib/api";
 
 type InvitePageProps = {
   invite: ViewerInvite | null;
   message: string | null;
-};
-
-type ApiSuccess = {
-  success: boolean;
 };
 
 const inputClassName =
@@ -55,13 +52,7 @@ export default function InvitePage({ invite, message }: InvitePageProps) {
         }),
       });
 
-      const payload = (await response.json()) as ApiSuccess & {
-        error?: { message?: string };
-      };
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error?.message || "Invite acceptance failed");
-      }
+      await readBrowserApiPayload<Record<string, never>>(response, "Invite acceptance failed");
 
       await router.push("/");
     } catch (submitError) {

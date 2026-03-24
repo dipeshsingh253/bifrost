@@ -5,14 +5,15 @@ import { useRouter } from "next/router";
 import { useState, type FormEvent } from "react";
 
 import { AuthShell } from "@/components/AuthShell";
-import { fetchBootstrapStatus, fetchOptionalSession, getApiErrorMessage } from "@/lib/api";
+import {
+  fetchBootstrapStatus,
+  fetchOptionalSession,
+  getApiErrorMessage,
+  readBrowserApiPayload,
+} from "@/lib/api";
 
 type SetupPageProps = {
   initialError: string | null;
-};
-
-type ApiSuccess = {
-  success: boolean;
 };
 
 const inputClassName =
@@ -49,13 +50,7 @@ export default function SetupPage({ initialError }: SetupPageProps) {
         }),
       });
 
-      const payload = (await response.json()) as ApiSuccess & {
-        error?: { message?: string };
-      };
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error?.message || "Bootstrap failed");
-      }
+      await readBrowserApiPayload<Record<string, never>>(response, "Bootstrap failed");
 
       await router.push("/");
     } catch (submitError) {

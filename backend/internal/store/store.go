@@ -13,6 +13,7 @@ import (
 
 var ErrNotFound = errors.New("not found")
 var ErrConflict = errors.New("conflict")
+var ErrInvalidCredentials = errors.New("invalid credentials")
 
 type SeedData struct {
 	Users            []domain.User
@@ -179,6 +180,53 @@ func (s *MemoryStore) RevokeSession(token string) error {
 	}
 
 	delete(s.byToken, token)
+	return nil
+}
+
+func (s *MemoryStore) UpdateUserName(userID, name string) (domain.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	user, ok := s.usersByID[userID]
+	if !ok {
+		return domain.User{}, ErrNotFound
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.User{}, ErrConflict
+	}
+
+	user.Name = name
+	s.usersByID[userID] = user
+	s.users[user.Email] = user
+	if user.AuthToken != "" {
+		s.byToken[user.AuthToken] = user
+	}
+
+	return user, nil
+}
+
+func (s *MemoryStore) ChangeUserPassword(userID, currentPassword, newPassword string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	user, ok := s.usersByID[userID]
+	if !ok {
+		return ErrNotFound
+	}
+
+	if user.Password != currentPassword {
+		return ErrInvalidCredentials
+	}
+
+	user.Password = strings.TrimSpace(newPassword)
+	s.usersByID[userID] = user
+	s.users[user.Email] = user
+	if user.AuthToken != "" {
+		s.byToken[user.AuthToken] = user
+	}
+
 	return nil
 }
 

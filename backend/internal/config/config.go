@@ -17,6 +17,8 @@ type Config struct {
 }
 
 func Load() Config {
+	loadDotEnvFiles(".env", ".env.local")
+
 	return Config{
 		ListenAddr:       env("BIFROST_LISTEN_ADDR", ":8080"),
 		JWTSecret:        env("BIFROST_JWT_SECRET", "bifrost-dev-secret"),
