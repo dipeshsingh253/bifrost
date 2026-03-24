@@ -29,10 +29,12 @@ Run locally:
 docker-compose up -d postgres
 
 cd backend
+cp .env.example .env
 go run .
 
 cd ../frontend
 npm install
+cp .env.example .env.local
 npm run dev
 
 cd ../agent
@@ -43,6 +45,14 @@ Default local URLs:
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
+
+## Environment Files
+
+The frontend and backend are both environment-driven now.
+
+- `backend/.env.example` shows the backend variables. The backend loads `.env` first and `.env.local` second, while still letting real process environment variables win.
+- `frontend/.env.example` shows the frontend variables. Next.js loads `frontend/.env.local` natively in local development.
+- Production should use the same variable names. The difference should be the values you inject, not separate dev-only code paths.
 
 ## Agent Config
 

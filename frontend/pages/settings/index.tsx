@@ -1,13 +1,13 @@
 import type { GetServerSideProps } from "next";
 
-export default function AdminIndex() {
+export default function SettingsIndex() {
   return null;
 }
 
 export const getServerSideProps: GetServerSideProps = async () => {
   return {
     redirect: {
-      destination: "/settings/admin",
+      destination: "/settings/profile",
       permanent: false,
     },
   };

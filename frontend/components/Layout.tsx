@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useState, type PropsWithChildren } from "react";
-import { Search, Sun, Settings, User, Plus, Shield } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 
 import { AddSystemShell } from "@/components/AddSystemShell";
 import { hasAdminAccess, type AuthUser } from "@/lib/api";
+import { NavbarAvatar } from "@/components/NavbarAvatar";
 
 type LayoutProps = PropsWithChildren<{
   currentUser?: AuthUser | null;
@@ -55,61 +56,23 @@ export function Layout({ children, currentUser }: LayoutProps) {
           </div>
 
           {/* Right: actions */}
-          <div className="flex items-center gap-1">
-            <button
-              className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Toggle theme"
-            >
-              <Sun className="h-4 w-4" />
-            </button>
-            <button
-              className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Settings"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-            <button
-              className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="User"
-            >
-              <User className="h-4 w-4" />
-            </button>
-            {canManageSystems ? (
-              <Link
-                className="ml-2 inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                href="/admin"
-              >
-                <Shield className="h-3.5 w-3.5" />
-                Admin
-              </Link>
-            ) : null}
-            {currentUser ? (
-              <div className="ml-2 hidden items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 sm:flex">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium text-foreground">{currentUser.name}</div>
-                  <div className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                    {currentUser.role}
-                  </div>
-                </div>
-                <button
-                  className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={loggingOut}
-                  onClick={handleLogout}
-                  type="button"
-                >
-                  {loggingOut ? "..." : "Logout"}
-                </button>
-              </div>
-            ) : null}
+          <div className="flex items-center gap-3">
             {canManageSystems ? (
               <button
-                className="ml-2 flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                className="flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-accent shadow-sm"
                 onClick={() => setIsAddSystemOpen(true)}
                 type="button"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add System
               </button>
+            ) : null}
+            {currentUser ? (
+              <NavbarAvatar
+                currentUser={currentUser}
+                onLogout={handleLogout}
+                loggingOut={loggingOut}
+              />
             ) : null}
           </div>
         </div>

@@ -5,14 +5,15 @@ import { useRouter } from "next/router";
 import { useState, type FormEvent } from "react";
 
 import { AuthShell } from "@/components/AuthShell";
-import { fetchBootstrapStatus, fetchOptionalSession, getApiErrorMessage } from "@/lib/api";
+import {
+  fetchBootstrapStatus,
+  fetchOptionalSession,
+  getApiErrorMessage,
+  readBrowserApiPayload,
+} from "@/lib/api";
 
 type LoginPageProps = {
   initialError: string | null;
-};
-
-type ApiSuccess = {
-  success: boolean;
 };
 
 const inputClassName =
@@ -45,13 +46,7 @@ export default function LoginPage({ initialError }: LoginPageProps) {
         }),
       });
 
-      const payload = (await response.json()) as ApiSuccess & {
-        error?: { message?: string };
-      };
-
-      if (!response.ok || !payload.success) {
-        throw new Error(payload.error?.message || "Login failed");
-      }
+      await readBrowserApiPayload<Record<string, never>>(response, "Login failed");
 
       await router.push("/");
     } catch (submitError) {

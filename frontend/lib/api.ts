@@ -201,6 +201,33 @@ export function getApiErrorMessage(error: unknown, fallback = "Request failed"):
   return fallback;
 }
 
+export async function readBrowserApiPayload<T>(
+  response: Response,
+  fallback = "Request failed"
+): Promise<T> {
+  const contentType = response.headers.get("content-type");
+  const body = await response.text();
+
+  if (!contentType?.toLowerCase().includes("application/json")) {
+    throw new Error(response.ok ? fallback : `${fallback} (${response.status})`);
+  }
+
+  try {
+    const payload = JSON.parse(body) as ApiEnvelope<T> | ApiErrorEnvelope;
+    if (!response.ok || !payload.success || !("data" in payload)) {
+      const error = "error" in payload ? payload.error : undefined;
+      throw new Error(error?.message || fallback);
+    }
+
+    return payload.data;
+  } catch (error) {
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(fallback);
+  }
+}
+
 function isUnauthorizedError(error: unknown): boolean {
   return isApiErrorStatus(error, 401);
 }

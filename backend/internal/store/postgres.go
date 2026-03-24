@@ -447,6 +447,85 @@ func (s *PostgresStore) RevokeSession(token string) error {
 	return nil
 }
 
+func (s *PostgresStore) UpdateUserName(userID, name string) (domain.User, error) {
+	ctx := context.Background()
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return domain.User{}, ErrConflict
+	}
+
+	var (
+		user     domain.User
+		role     string
+		tenantID string
+	)
+	err := s.db.QueryRowContext(ctx, `
+		UPDATE users u
+		SET name = $2, updated_at = NOW()
+		FROM tenant_memberships tm
+		WHERE u.id = $1
+		  AND tm.user_id = u.id
+		  AND tm.is_active = TRUE
+		RETURNING u.id, tm.tenant_id, u.email, u.name, tm.role
+	`, userID, name).Scan(&user.ID, &tenantID, &user.Email, &user.Name, &role)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return domain.User{}, ErrNotFound
+		}
+		return domain.User{}, err
+	}
+
+	user.TenantID = tenantID
+	user.Role = domain.UserRole(role)
+	return user, nil
+}
+
+func (s *PostgresStore) ChangeUserPassword(userID, currentPassword, newPassword string) error {
+	ctx := context.Background()
+
+	var hash string
+	if err := s.db.QueryRowContext(ctx, `
+		SELECT password_hash
+		FROM users
+		WHERE id = $1
+		  AND is_active = TRUE
+	`, userID).Scan(&hash); err != nil {
+		if err == sql.ErrNoRows {
+			return ErrNotFound
+		}
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(currentPassword)); err != nil {
+		return ErrInvalidCredentials
+	}
+
+	nextHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	result, err := s.db.ExecContext(ctx, `
+		UPDATE users
+		SET password_hash = $2, updated_at = NOW()
+		WHERE id = $1
+		  AND is_active = TRUE
+	`, userID, string(nextHash))
+	if err != nil {
+		return err
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (s *PostgresStore) TenantSummary(tenantID string) (domain.TenantSummary, error) {
 	ctx := context.Background()
 

@@ -3,9 +3,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getApiBaseUrl } from "@/lib/api";
 
 type ProxyOptions = {
-  allowBody?: boolean;
-  method: "DELETE" | "GET" | "POST";
-  path: string;
+	allowBody?: boolean;
+	method: "DELETE" | "GET" | "PATCH" | "POST";
+	path: string;
 };
 
 export async function proxyApiRequest(
@@ -47,6 +47,12 @@ export async function proxyApiRequest(
     }
 
     const contentType = response.headers.get("content-type");
+    if (contentType?.toLowerCase().includes("application/json")) {
+      const body = await response.json();
+      res.status(response.status).json(body);
+      return;
+    }
+
     if (contentType) {
       res.setHeader("Content-Type", contentType);
     }

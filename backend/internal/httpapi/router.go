@@ -61,6 +61,8 @@ func NewRouter(cfg config.Config, dataStore store.Repository) *gin.Engine {
 		protected.GET("/auth/session", router.me)
 		protected.POST("/auth/logout", router.logout)
 		protected.GET("/me", router.me)
+		protected.PATCH("/me", router.updateProfile)
+		protected.POST("/me/password", router.changePassword)
 		protected.GET("/servers", router.listServers)
 		protected.GET("/servers/:serverID", router.serverDetail)
 		protected.GET("/servers/:serverID/metrics", router.serverMetrics)
@@ -440,6 +442,81 @@ func (r *Router) logout(c *gin.Context) {
 	r.clearSessionCookie(c)
 	c.JSON(http.StatusOK, successResponse(gin.H{
 		"status": "logged_out",
+	}))
+}
+
+func (r *Router) updateProfile(c *gin.Context) {
+	user := userFromContext(c)
+
+	var request struct {
+		Name string `json:"name"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, errorResponse("invalid request body", "INVALID_REQUEST", gin.H{"reason": err.Error()}))
+		return
+	}
+
+	request.Name = strings.TrimSpace(request.Name)
+	if request.Name == "" {
+		c.JSON(http.StatusBadRequest, errorResponse("name is required", "INVALID_REQUEST", nil))
+		return
+	}
+
+	updatedUser, err := r.store.UpdateUserName(user.ID, request.Name)
+	if err != nil {
+		if err == store.ErrNotFound {
+			c.JSON(http.StatusNotFound, errorResponse("user not found", "USER_NOT_FOUND", nil))
+			return
+		}
+		if err == store.ErrConflict {
+			c.JSON(http.StatusBadRequest, errorResponse("name is required", "INVALID_REQUEST", nil))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, errorResponse("failed to update profile", "PROFILE_UPDATE_FAILED", gin.H{"reason": err.Error()}))
+		return
+	}
+
+	c.JSON(http.StatusOK, successResponse(updatedUser))
+}
+
+func (r *Router) changePassword(c *gin.Context) {
+	user := userFromContext(c)
+
+	var request struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, errorResponse("invalid request body", "INVALID_REQUEST", gin.H{"reason": err.Error()}))
+		return
+	}
+
+	request.CurrentPassword = strings.TrimSpace(request.CurrentPassword)
+	request.NewPassword = strings.TrimSpace(request.NewPassword)
+	if request.CurrentPassword == "" || request.NewPassword == "" {
+		c.JSON(http.StatusBadRequest, errorResponse("current password and new password are required", "INVALID_REQUEST", nil))
+		return
+	}
+	if len(request.NewPassword) < 8 {
+		c.JSON(http.StatusBadRequest, errorResponse("new password must be at least 8 characters", "INVALID_REQUEST", nil))
+		return
+	}
+
+	if err := r.store.ChangeUserPassword(user.ID, request.CurrentPassword, request.NewPassword); err != nil {
+		if err == store.ErrNotFound {
+			c.JSON(http.StatusNotFound, errorResponse("user not found", "USER_NOT_FOUND", nil))
+			return
+		}
+		if err == store.ErrInvalidCredentials {
+			c.JSON(http.StatusUnauthorized, errorResponse("current password is incorrect", "INVALID_CREDENTIALS", nil))
+			return
+		}
+		c.JSON(http.StatusInternalServerError, errorResponse("failed to update password", "PASSWORD_UPDATE_FAILED", gin.H{"reason": err.Error()}))
+		return
+	}
+
+	c.JSON(http.StatusOK, successResponse(gin.H{
+		"status": "password_updated",
 	}))
 }
 

@@ -8,6 +8,8 @@ type Repository interface {
 	Authenticate(email, password string) (domain.User, error)
 	UserByToken(token string) (domain.User, error)
 	RevokeSession(token string) error
+	UpdateUserName(userID, name string) (domain.User, error)
+	ChangeUserPassword(userID, currentPassword, newPassword string) error
 	TenantSummary(tenantID string) (domain.TenantSummary, error)
 	ViewerAccess(tenantID string) (domain.ViewerAccess, error)
 	CreateViewerInvite(tenantID, invitedByUserID, email string) (domain.ViewerInvite, error)
