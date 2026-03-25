@@ -201,6 +201,39 @@ export function getApiErrorMessage(error: unknown, fallback = "Request failed"):
   return fallback;
 }
 
+function arrayOrEmpty<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function normalizeContainer(container: Container): Container {
+  return {
+    ...container,
+    ports: arrayOrEmpty(container.ports),
+  };
+}
+
+function normalizeService(service: Service): Service {
+  return {
+    ...service,
+    published_ports: arrayOrEmpty(service.published_ports),
+    containers: arrayOrEmpty(service.containers).map(normalizeContainer),
+  };
+}
+
+function normalizeServerList(items: ServerListItem[]): ServerListItem[] {
+  return arrayOrEmpty(items).map((item) => ({
+    ...item,
+    services: arrayOrEmpty(item.services).map(normalizeService),
+  }));
+}
+
+function normalizeServerBundle(bundle: ServerBundle): ServerBundle {
+  return {
+    ...bundle,
+    services: arrayOrEmpty(bundle.services).map(normalizeService),
+  };
+}
+
 export async function readBrowserApiPayload<T>(
   response: Response,
   fallback = "Request failed"
@@ -406,23 +439,27 @@ export async function fetchViewerAccess(context?: GetServerSidePropsContext): Pr
 }
 
 export async function fetchServerList(context?: GetServerSidePropsContext): Promise<ServerListItem[]> {
-  return apiFetch<ServerListItem[]>("/api/v1/servers", { context });
+  return normalizeServerList(await apiFetch<ServerListItem[]>("/api/v1/servers", { context }));
 }
 
 export async function fetchServerBundle(
   serverRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ServerBundle> {
-  return apiFetch<ServerBundle>(serverApiPath(serverRouteID), { context });
+  return normalizeServerBundle(await apiFetch<ServerBundle>(serverApiPath(serverRouteID), { context }));
 }
 
 export async function fetchProjects(
   serverRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<{ server: Server; projects: Service[] }> {
-  return apiFetch<{ server: Server; projects: Service[] }>(serverProjectsApiPath(serverRouteID), {
+  const payload = await apiFetch<{ server: Server; projects: Service[] }>(serverProjectsApiPath(serverRouteID), {
     context,
   });
+  return {
+    ...payload,
+    projects: arrayOrEmpty(payload.projects).map(normalizeService),
+  };
 }
 
 export async function fetchProjectDetail(
@@ -430,9 +467,13 @@ export async function fetchProjectDetail(
   projectRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ProjectDetailResponse> {
-  return apiFetch<ProjectDetailResponse>(serverProjectApiPath(serverRouteID, projectRouteID), {
+  const payload = await apiFetch<ProjectDetailResponse>(serverProjectApiPath(serverRouteID, projectRouteID), {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+  };
 }
 
 export async function fetchProjectMetrics(
@@ -440,9 +481,13 @@ export async function fetchProjectMetrics(
   projectRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ProjectMetricsResponse> {
-  return apiFetch<ProjectMetricsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/metrics`, {
+  const payload = await apiFetch<ProjectMetricsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/metrics`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+  };
 }
 
 export async function fetchProjectLogs(
@@ -450,9 +495,14 @@ export async function fetchProjectLogs(
   projectRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ProjectLogsResponse> {
-  return apiFetch<ProjectLogsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/logs`, {
+  const payload = await apiFetch<ProjectLogsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/logs`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    logs: arrayOrEmpty(payload.logs),
+  };
 }
 
 export async function fetchProjectEvents(
@@ -460,18 +510,27 @@ export async function fetchProjectEvents(
   projectRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ProjectEventsResponse> {
-  return apiFetch<ProjectEventsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/events`, {
+  const payload = await apiFetch<ProjectEventsResponse>(`${serverProjectApiPath(serverRouteID, projectRouteID)}/events`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    events: arrayOrEmpty(payload.events),
+  };
 }
 
 export async function fetchStandaloneContainers(
   serverRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ContainersResponse> {
-  return apiFetch<ContainersResponse>(serverStandaloneContainersApiPath(serverRouteID), {
+  const payload = await apiFetch<ContainersResponse>(serverStandaloneContainersApiPath(serverRouteID), {
     context,
   });
+  return {
+    ...payload,
+    containers: arrayOrEmpty(payload.containers).map(normalizeContainer),
+  };
 }
 
 export async function fetchContainerDetail(
@@ -479,9 +538,14 @@ export async function fetchContainerDetail(
   containerRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ContainerDetailResponse> {
-  return apiFetch<ContainerDetailResponse>(serverContainerApiPath(serverRouteID, containerRouteID), {
+  const payload = await apiFetch<ContainerDetailResponse>(serverContainerApiPath(serverRouteID, containerRouteID), {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    container: normalizeContainer(payload.container),
+  };
 }
 
 export async function fetchContainerMetrics(
@@ -489,9 +553,14 @@ export async function fetchContainerMetrics(
   containerRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ContainerMetricsResponse> {
-  return apiFetch<ContainerMetricsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/metrics`, {
+  const payload = await apiFetch<ContainerMetricsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/metrics`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    container: normalizeContainer(payload.container),
+  };
 }
 
 export async function fetchContainerLogs(
@@ -499,9 +568,15 @@ export async function fetchContainerLogs(
   containerRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ContainerLogsResponse> {
-  return apiFetch<ContainerLogsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/logs`, {
+  const payload = await apiFetch<ContainerLogsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/logs`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    container: normalizeContainer(payload.container),
+    logs: arrayOrEmpty(payload.logs),
+  };
 }
 
 export async function fetchContainerEvents(
@@ -509,9 +584,15 @@ export async function fetchContainerEvents(
   containerRouteID: string,
   context?: GetServerSidePropsContext
 ): Promise<ContainerEventsResponse> {
-  return apiFetch<ContainerEventsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/events`, {
+  const payload = await apiFetch<ContainerEventsResponse>(`${serverContainerApiPath(serverRouteID, containerRouteID)}/events`, {
     context,
   });
+  return {
+    ...payload,
+    project: normalizeService(payload.project),
+    container: normalizeContainer(payload.container),
+    events: arrayOrEmpty(payload.events),
+  };
 }
 
 export async function fetchContainerEnv(
