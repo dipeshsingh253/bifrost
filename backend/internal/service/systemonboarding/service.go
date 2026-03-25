@@ -35,6 +35,7 @@ type CreateInput struct {
 
 type View struct {
 	ID          string     `json:"id"`
+	TenantID    string     `json:"tenant_id"`
 	ServerID    string     `json:"server_id"`
 	AgentID     string     `json:"agent_id"`
 	Name        string     `json:"name"`
@@ -151,6 +152,7 @@ func (s *Service) Reissue(tenantID, onboardingID string) (CreatedView, error) {
 func viewFromDomain(onboarding domain.SystemOnboarding) View {
 	return View{
 		ID:          onboarding.ID,
+		TenantID:    onboarding.TenantID,
 		ServerID:    onboarding.ServerID,
 		AgentID:     onboarding.AgentID,
 		Name:        onboarding.Name,
@@ -183,8 +185,7 @@ func renderAgentConfigYAML(onboarding domain.SystemOnboarding, backendURL string
 		"  include_projects: []",
 		"  include_containers: []",
 		"  exclude_projects: []",
-		"  exclude_containers:",
-		"    - redis",
+		"  exclude_containers: []",
 		"",
 		"logs:",
 		"  max_lines_per_fetch: 200",
@@ -215,6 +216,10 @@ func renderDockerRunCommand(onboarding domain.SystemOnboarding, backendURL, dock
 		"  -e BIFROST_TENANT_ID=" + shellQuote(onboarding.TenantID) + " \\",
 		"  -e BIFROST_BACKEND_URL=" + shellQuote(backendURL) + " \\",
 		"  -e BIFROST_ENROLLMENT_TOKEN=" + shellQuote(onboarding.APIKey) + " \\",
+		"  -e BIFROST_COLLECT_HOST='true' \\",
+		"  -e BIFROST_COLLECT_DOCKER='true' \\",
+		"  -e BIFROST_COLLECT_LOGS='true' \\",
+		"  -e BIFROST_DOCKER_INCLUDE_ALL='true' \\",
 		"  " + shellQuote(dockerImage),
 	}, "\n")
 }
@@ -228,6 +233,10 @@ func renderSystemdInstallCommand(onboarding domain.SystemOnboarding, backendURL 
 		"  BIFROST_TENANT_ID=" + shellQuote(onboarding.TenantID) + " \\",
 		"  BIFROST_BACKEND_URL=" + shellQuote(backendURL) + " \\",
 		"  BIFROST_ENROLLMENT_TOKEN=" + shellQuote(onboarding.APIKey) + " \\",
+		"  BIFROST_COLLECT_HOST='true' \\",
+		"  BIFROST_COLLECT_DOCKER='true' \\",
+		"  BIFROST_COLLECT_LOGS='true' \\",
+		"  BIFROST_DOCKER_INCLUDE_ALL='true' \\",
 		"  sh",
 	}, "\n")
 }

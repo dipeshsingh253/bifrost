@@ -44,6 +44,11 @@ type LogsConfig struct {
 func Load(path string) (Config, error) {
 	cfg := Config{
 		PollIntervalSeconds: 10,
+		Collectors: CollectorConfig{
+			Host:   true,
+			Docker: true,
+			Logs:   true,
+		},
 		Docker: DockerConfig{
 			IncludeAll: true,
 		},

@@ -12,6 +12,7 @@ import {
 function buildSystem(overrides: Partial<SystemOnboardingRecord> = {}): SystemOnboardingRecord {
   return {
     id: "7c3dc5c3-7c7d-44e0-b961-3b127abfa8a0",
+    tenant_id: "17a5d831-eb7a-4f7c-9e20-fa77cb8464dd",
     server_id: "f799eae4-e91a-4d91-b050-abd234307776",
     agent_id: "0a2c1560-b363-46be-b42f-74a6ca2e9888",
     name: "Validation VPS",

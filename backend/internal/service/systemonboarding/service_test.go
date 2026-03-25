@@ -62,6 +62,9 @@ func TestCreateGetAndListRoundTripSystemOnboardingView(t *testing.T) {
 	if !strings.Contains(created.ConfigYAML, `enrollment_token: "`+created.EnrollmentToken+`"`) {
 		t.Fatalf("expected config yaml to include enrollment token")
 	}
+	if !strings.Contains(created.ConfigYAML, "  exclude_containers: []") {
+		t.Fatalf("expected config yaml to include all containers by default")
+	}
 	if created.InstallScriptURL != "https://bifrost.example.com/api/v1/install/agent.sh" {
 		t.Fatalf("expected install script url, got %q", created.InstallScriptURL)
 	}
@@ -77,11 +80,17 @@ func TestCreateGetAndListRoundTripSystemOnboardingView(t *testing.T) {
 	if !strings.Contains(created.DockerRunCommand, "'bifrost-agent:latest'") {
 		t.Fatalf("expected docker command to use the configured agent image, got %q", created.DockerRunCommand)
 	}
+	if !strings.Contains(created.DockerRunCommand, "BIFROST_COLLECT_DOCKER='true'") || !strings.Contains(created.DockerRunCommand, "BIFROST_DOCKER_INCLUDE_ALL='true'") {
+		t.Fatalf("expected docker command to explicitly enable full docker collection, got %q", created.DockerRunCommand)
+	}
 	if !strings.Contains(created.SystemdInstallCommand, "curl -fsSL 'https://bifrost.example.com/api/v1/install/agent.sh'") {
 		t.Fatalf("expected systemd command to use install script, got %q", created.SystemdInstallCommand)
 	}
 	if strings.Contains(created.SystemdInstallCommand, "BIFROST_AGENT_IMAGE=") {
 		t.Fatalf("expected systemd command to stop requiring an explicit image")
+	}
+	if !strings.Contains(created.SystemdInstallCommand, "BIFROST_COLLECT_DOCKER='true'") || !strings.Contains(created.SystemdInstallCommand, "BIFROST_DOCKER_INCLUDE_ALL='true'") {
+		t.Fatalf("expected systemd command to explicitly enable full docker collection, got %q", created.SystemdInstallCommand)
 	}
 
 	detail, err := service.Get(seed.TenantIDDemo, created.ID)

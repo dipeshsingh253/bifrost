@@ -4,6 +4,7 @@ export type FlowStep = "details" | "config" | "install" | "waiting";
 
 export type SystemOnboardingRecord = {
   id: string;
+  tenant_id: string;
   server_id: string;
   agent_id: string;
   name: string;
