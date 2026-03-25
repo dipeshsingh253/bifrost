@@ -66,6 +66,10 @@ docker run -d \
   -e BIFROST_TENANT_ID='...' \
   -e BIFROST_BACKEND_URL='http://your-backend:8080' \
   -e BIFROST_ENROLLMENT_TOKEN='...' \
+  -e BIFROST_COLLECT_HOST='true' \
+  -e BIFROST_COLLECT_DOCKER='true' \
+  -e BIFROST_COLLECT_LOGS='true' \
+  -e BIFROST_DOCKER_INCLUDE_ALL='true' \
   bifrost-agent:latest
 ```
 
@@ -136,15 +140,10 @@ collectors:
 
 docker:
   include_all: true
-  include_projects:
-    - project-a
-  include_containers:
-    - container-a
-  exclude_projects:
-    - zhiro
-  exclude_containers:
-    - redis
-    - postgres
+  include_projects: []
+  include_containers: []
+  exclude_projects: []
+  exclude_containers: []
 
 logs:
   max_lines_per_fetch: 200
@@ -212,6 +211,11 @@ Defaults used by the agent:
 
 ```yaml
 poll_interval_seconds: 10
+
+collectors:
+  host: true
+  docker: true
+  logs: true
 
 docker:
   include_all: true

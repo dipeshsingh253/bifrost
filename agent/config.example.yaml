@@ -16,8 +16,7 @@ docker:
   include_projects: []
   include_containers: []
   exclude_projects: []
-  exclude_containers:
-    - redis
+  exclude_containers: []
 
 logs:
   max_lines_per_fetch: 200

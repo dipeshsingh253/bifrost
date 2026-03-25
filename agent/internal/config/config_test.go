@@ -102,6 +102,9 @@ func TestLoadAppliesDockerAndLogsDefaults(t *testing.T) {
 	if !cfg.Docker.IncludeAll {
 		t.Fatalf("expected docker.include_all to default true, got %+v", cfg.Docker)
 	}
+	if !cfg.Collectors.Host || !cfg.Collectors.Docker || !cfg.Collectors.Logs {
+		t.Fatalf("expected collectors to default on, got %+v", cfg.Collectors)
+	}
 	if cfg.Logs.MaxLinesPerFetch != 200 {
 		t.Fatalf("expected logs.max_lines_per_fetch to default 200, got %+v", cfg.Logs)
 	}
