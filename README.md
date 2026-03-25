@@ -26,10 +26,9 @@ Requirements:
 Run locally:
 
 ```bash
-docker-compose up -d postgres
-
 cd backend
 cp .env.example .env
+# point BIFROST_DATABASE_URL at your PostgreSQL instance
 go run .
 
 cd ../frontend
@@ -87,6 +86,31 @@ Frontend:
 cd frontend && npm run lint
 cd frontend && npm run build
 ```
+
+## Production Deploy
+
+The central deployment only needs two services:
+
+- `bifrost-backend`
+- `bifrost-frontend`
+
+The agent is installed separately on each monitored machine and does not run in the central compose stack.
+
+To deploy with Docker Compose:
+
+```bash
+cp .env.example .env
+docker network create internal_net # only once if it does not already exist
+docker compose pull
+docker compose up -d
+```
+
+Notes:
+
+- `docker-compose.yml` assumes PostgreSQL is already running elsewhere and reachable through `BIFROST_DATABASE_URL`.
+- `BIFROST_API_BASE_URL` should stay `http://bifrost-backend:8080` inside the compose network so the frontend can reach the backend internally.
+- `BIFROST_AGENT_BACKEND_URL` must be the public backend URL agents should call, for example `https://bifrost.example.com`.
+- The GitHub Actions workflow at `.github/workflows/build-and-push-images.yml` publishes `ghcr.io/<owner>/bifrost-backend` and `ghcr.io/<owner>/bifrost-frontend` on pushes to `main`.
 
 ## Notes
 

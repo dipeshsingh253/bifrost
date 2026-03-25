@@ -138,13 +138,12 @@ Keep responsibilities separated by directory. Do not mix backend, agent, and fro
 # First time setup
 cd backend && go mod download
 cd frontend && npm install
-docker-compose up -d postgres
+# Start PostgreSQL separately and point backend/.env at it
 
-# Running locally (3-4 terminals)
-docker-compose up postgres           # terminal 1
-cd backend && go run .               # terminal 2
-cd frontend && npm run dev           # terminal 3
-cd agent && go run .                 # terminal 4 (optional)
+# Running locally (2-3 terminals)
+cd backend && go run .               # terminal 1
+cd frontend && npm run dev           # terminal 2
+cd agent && go run .                 # terminal 3 (optional)
 ````
 
 **Access**: Frontend [http://localhost:3000](http://localhost:3000), Backend [http://localhost:8080](http://localhost:8080)
