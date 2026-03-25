@@ -102,12 +102,14 @@ To deploy with Docker Compose:
 cp .env.example .env
 docker network create internal_net # only once if it does not already exist
 docker compose pull
+docker compose run --rm bifrost-backend migrate -path /app/migrations -database "$BIFROST_DATABASE_URL" up
 docker compose up -d
 ```
 
 Notes:
 
 - `docker-compose.yml` assumes PostgreSQL is already running elsewhere and reachable through `BIFROST_DATABASE_URL`.
+- The backend image now includes the `migrate` CLI, so you can also run `docker exec -it bifrost-backend migrate -path /app/migrations -database "$BIFROST_DATABASE_URL" up` after the backend container is running.
 - `BIFROST_API_BASE_URL` should stay `http://bifrost-backend:8080` inside the compose network so the frontend can reach the backend internally.
 - `BIFROST_AGENT_BACKEND_URL` must be the public backend URL agents should call, for example `https://bifrost.example.com`.
 - The GitHub Actions workflow at `.github/workflows/build-and-push-images.yml` publishes `ghcr.io/<owner>/bifrost-backend` and `ghcr.io/<owner>/bifrost-frontend` on pushes to `main`.
