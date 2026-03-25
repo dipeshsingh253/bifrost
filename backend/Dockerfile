@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/bifrost-backend .
-RUN GOBIN=/out go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN GOBIN=/out go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 FROM alpine:3.22
 

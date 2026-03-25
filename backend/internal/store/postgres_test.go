@@ -301,18 +301,17 @@ func applyPostgresTestMigrations(db *sql.DB) error {
 	})
 
 	for _, entry := range entries {
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".sql" {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".up.sql") {
 			continue
 		}
 		content, err := os.ReadFile(filepath.Join(migrationsDir, entry.Name()))
 		if err != nil {
 			return err
 		}
-		upSQL := migrationUpSQL(string(content))
-		if strings.TrimSpace(upSQL) == "" {
+		if len(content) == 0 {
 			continue
 		}
-		if _, err := db.Exec(upSQL); err != nil {
+		if _, err := db.Exec(string(content)); err != nil {
 			return fmt.Errorf("%s: %w", entry.Name(), err)
 		}
 	}
@@ -326,25 +325,4 @@ func postgresMigrationsDir() (string, error) {
 		return "", fmt.Errorf("resolve current test file")
 	}
 	return filepath.Clean(filepath.Join(filepath.Dir(filename), "..", "..", "migrations")), nil
-}
-
-func migrationUpSQL(content string) string {
-	var builder strings.Builder
-	inUp := false
-
-	for _, line := range strings.Split(content, "\n") {
-		switch {
-		case strings.HasPrefix(line, "-- +migrate Up"):
-			inUp = true
-			continue
-		case strings.HasPrefix(line, "-- +migrate Down"):
-			inUp = false
-		}
-		if inUp {
-			builder.WriteString(line)
-			builder.WriteByte('\n')
-		}
-	}
-
-	return builder.String()
 }

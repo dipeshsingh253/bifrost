@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS event_logs;
+DROP TABLE IF EXISTS system_onboardings;
+DROP TABLE IF EXISTS agents;
+DROP TABLE IF EXISTS log_lines;
+DROP TABLE IF EXISTS metric_points;
+DROP TABLE IF EXISTS containers;
+DROP TABLE IF EXISTS service_groups;
+DROP TABLE IF EXISTS servers;
+DROP TABLE IF EXISTS user_invites;
+DROP TABLE IF EXISTS user_sessions;
+DROP TABLE IF EXISTS tenant_memberships;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS tenants;

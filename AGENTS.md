@@ -154,11 +154,11 @@ cd agent && go run .                 # terminal 3 (optional)
 
 **Tool**: golang-migrate CLI  
 **Location**: `backend/migrations/`  
-**Naming**: `YYYYMMDD_HHMMSS_description.sql`
+**Naming**: `YYYYMMDD_HHMMSS_description.up.sql` and `YYYYMMDD_HHMMSS_description.down.sql`
 
 **Structure**:
 
-- each migration file contains both `up` and `down` sections (similar to Alembic style)
+- each migration version is split into one `.up.sql` file and one matching `.down.sql` file
 
 **Rules**:
 
