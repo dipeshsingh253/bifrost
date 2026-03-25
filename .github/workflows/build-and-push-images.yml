@@ -10,6 +10,7 @@ env:
   IMAGE_NAMESPACE: ${{ github.repository_owner }}
   BACKEND_IMAGE_NAME: bifrost-backend
   FRONTEND_IMAGE_NAME: bifrost-frontend
+  AGENT_IMAGE_NAME: bifrost-agent
 
 jobs:
   build-and-push:
@@ -48,3 +49,13 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Build and push agent image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./agent
+          file: ./agent/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.AGENT_IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/${{ env.AGENT_IMAGE_NAME }}:${{ github.sha }}
