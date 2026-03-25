@@ -1,7 +1,7 @@
 # Next Steps
 
-1. Copy [backend/.env.example](/home/kakarot/projects/bifrost/backend/.env.example) to `backend/.env`, then adjust values only if your local ports or database credentials differ.
-2. Copy [frontend/.env.example](/home/kakarot/projects/bifrost/frontend/.env.example) to `frontend/.env.local`.
-3. Start the backend from `backend/` and the frontend from `frontend/`, then confirm login and settings pages load normally.
-4. In `/settings/profile`, save a new display name and confirm the change persists after refresh.
-5. In `/settings/profile`, change the password, log out, and confirm only the new password works.
+1. Copy [.env.example](/home/kakarot/projects/bifrost/.env.example) to `.env` and set the production values for your public backend URL, JWT secret, and shared PostgreSQL connection string.
+2. Create the external Docker network once with `docker network create internal_net` if it does not already exist on the server.
+3. From [docker-compose.yml](/home/kakarot/projects/bifrost/docker-compose.yml), run `docker compose pull` and `docker compose up -d`.
+4. Open the deployed frontend, sign in, and confirm the dashboard and all `/settings/*` pages load without API errors.
+5. Run a fresh agent install against the deployed backend and confirm a monitored server connects successfully.

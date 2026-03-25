@@ -1,17 +1,50 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: bifrost-postgres
-    environment:
-      POSTGRES_DB: bifrost
-      POSTGRES_USER: bifrost
-      POSTGRES_PASSWORD: bifrost
+  bifrost-backend:
+    image: ${BIFROST_BACKEND_IMAGE}
+    container_name: bifrost-backend
+    env_file:
+      - .env
+    restart: unless-stopped
     ports:
-      - "5433:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - "${BIFROST_BACKEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - internal_net
+    mem_limit: 512m
+    cpus: 1.0
 
-volumes:
-  postgres-data:
+  bifrost-frontend:
+    image: ${BIFROST_FRONTEND_IMAGE}
+    container_name: bifrost-frontend
+    env_file:
+      - .env
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    depends_on:
+      bifrost-backend:
+        condition: service_healthy
+    restart: unless-stopped
+    ports:
+      - "${BIFROST_FRONTEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/login"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - internal_net
+    mem_limit: 512m
+    cpus: 1.0
+
+networks:
+  internal_net:
+    external: true
