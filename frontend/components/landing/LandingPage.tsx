@@ -567,7 +567,7 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
 
 
 
-        <section className={styles.section} id="testimonials">
+        {/* <section className={styles.section} id="testimonials">
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Love from developers</h2>
@@ -649,7 +649,7 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <section className={styles.ctaSection}>
           <div className={styles.container}>
