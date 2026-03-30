@@ -90,6 +90,7 @@ export type LogLine = {
   containerId: string;
   containerName: string;
   serviceTag: string;
+  level: string;
   message: string;
 };
 

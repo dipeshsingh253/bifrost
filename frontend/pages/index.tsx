@@ -3,8 +3,16 @@ import type { GetServerSideProps } from "next";
 import Link from "next/link";
 import { useState, useMemo } from "react";
 
+import { LandingPage } from "@/components/landing/LandingPage";
 import { Layout } from "@/components/Layout";
-import { fetchServerList, getApiErrorMessage, isApiErrorStatus, requireAuthenticatedPage, type AuthenticatedPageProps } from "@/lib/api";
+import {
+  fetchBootstrapStatus,
+  fetchOptionalSession,
+  fetchServerList,
+  getApiErrorMessage,
+  isApiErrorStatus,
+  type AuthUser,
+} from "@/lib/api";
 import { MonitoringUnavailableState } from "@/components/MonitoringUnavailableState";
 import { serverPath } from "@/lib/monitoring-routes";
 import type { Server, Service } from "@/lib/types";
@@ -78,10 +86,14 @@ type ServerListItem = {
 
 type HomeProps = {
   bundles: ServerListItem[];
+  currentUser: AuthUser | null;
+  isLanding: boolean;
+  landingAuthHref: string;
+  landingAuthLabel: string;
   loadError: string | null;
-} & AuthenticatedPageProps;
+};
 
-export default function Home({ bundles, currentUser, loadError }: HomeProps) {
+export default function Home({ bundles, currentUser, isLanding, landingAuthHref, landingAuthLabel, loadError }: HomeProps) {
   const [filter, setFilter] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
@@ -132,20 +144,35 @@ export default function Home({ bundles, currentUser, loadError }: HomeProps) {
     return items;
   }, [bundles, filter, sortKey, sortDir]);
 
+  if (isLanding) {
+    return (
+      <>
+        <Head>
+          <title>Bifrost</title>
+          <meta
+            name="description"
+            content="Bifrost helps solo developers and small teams monitor VPS servers, Docker services, and logs from one clean dashboard."
+          />
+        </Head>
+        <LandingPage authHref={landingAuthHref} authLabel={landingAuthLabel} />
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
         <title>Bifrost</title>
         <meta name="description" content="Bifrost server monitoring dashboard" />
       </Head>
-      <Layout currentUser={currentUser}>
+      <Layout currentUser={currentUser ?? undefined}>
         {loadError ? (
           <MonitoringUnavailableState
             message={loadError}
             title="Systems are temporarily unavailable."
           />
         ) : (
-        <div className="rounded-lg border border-border bg-card">
+          <div className="rounded-lg border border-border bg-card">
           {/* Header */}
           <div className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -201,7 +228,7 @@ export default function Home({ bundles, currentUser, loadError }: HomeProps) {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
         )}
       </Layout>
     </>
@@ -260,18 +287,72 @@ function ServerRow({ bundle }: { bundle: ServerListItem }) {
 }
 
 export const getServerSideProps: GetServerSideProps<HomeProps> = async (context) => {
-  return requireAuthenticatedPage(context, async () => {
+  let currentUser: AuthUser | null = null;
+
+  try {
+    currentUser = await fetchOptionalSession(context);
+  } catch {
+    currentUser = null;
+  }
+
+  if (!currentUser) {
+    let landingAuthHref = "/login";
+    let landingAuthLabel = "Login to Dashboard";
+
     try {
-      const bundles = await fetchServerList(context);
-      return { bundles, loadError: null };
-    } catch (error) {
-      if (isApiErrorStatus(error, 401)) {
-        throw error;
+      const bootstrap = await fetchBootstrapStatus(context);
+      if (bootstrap.needs_bootstrap) {
+        landingAuthHref = "/setup";
+        landingAuthLabel = "Create Admin";
       }
-      return {
+    } catch {
+      landingAuthHref = "/login";
+      landingAuthLabel = "Login to Dashboard";
+    }
+
+    return {
+      props: {
         bundles: [],
-        loadError: getApiErrorMessage(error, "Failed to load systems from the backend."),
+        currentUser: null,
+        isLanding: true,
+        landingAuthHref,
+        landingAuthLabel,
+        loadError: null,
+      },
+    };
+  }
+
+  try {
+    const bundles = await fetchServerList(context);
+    return {
+      props: {
+        bundles,
+        currentUser,
+        isLanding: false,
+        landingAuthHref: "/login",
+        landingAuthLabel: "Login to Dashboard",
+        loadError: null,
+      },
+    };
+  } catch (error) {
+    if (isApiErrorStatus(error, 401)) {
+      return {
+        redirect: {
+          destination: "/login",
+          permanent: false,
+        },
       };
     }
-  });
+
+    return {
+      props: {
+        bundles: [],
+        currentUser,
+        isLanding: false,
+        landingAuthHref: "/login",
+        landingAuthLabel: "Login to Dashboard",
+        loadError: getApiErrorMessage(error, "Failed to load systems from the backend."),
+      },
+    };
+  }
 };

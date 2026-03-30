@@ -12,6 +12,7 @@ import type {
 } from "@/lib/types";
 import {
   serverApiPath,
+  serverContainersApiPath,
   serverContainerApiPath,
   serverProjectApiPath,
   serverProjectsApiPath,
@@ -217,6 +218,13 @@ function normalizeService(service: Service): Service {
     ...service,
     published_ports: arrayOrEmpty(service.published_ports),
     containers: arrayOrEmpty(service.containers).map(normalizeContainer),
+  };
+}
+
+function normalizeLogLine(log: LogLine): LogLine {
+  return {
+    ...log,
+    level: typeof log.level === "string" && log.level.trim() !== "" ? log.level.toLowerCase() : "info",
   };
 }
 
@@ -501,7 +509,7 @@ export async function fetchProjectLogs(
   return {
     ...payload,
     project: normalizeService(payload.project),
-    logs: arrayOrEmpty(payload.logs),
+    logs: arrayOrEmpty(payload.logs).map(normalizeLogLine),
   };
 }
 
@@ -525,6 +533,19 @@ export async function fetchStandaloneContainers(
   context?: GetServerSidePropsContext
 ): Promise<ContainersResponse> {
   const payload = await apiFetch<ContainersResponse>(serverStandaloneContainersApiPath(serverRouteID), {
+    context,
+  });
+  return {
+    ...payload,
+    containers: arrayOrEmpty(payload.containers).map(normalizeContainer),
+  };
+}
+
+export async function fetchAllContainers(
+  serverRouteID: string,
+  context?: GetServerSidePropsContext
+): Promise<ContainersResponse> {
+  const payload = await apiFetch<ContainersResponse>(serverContainersApiPath(serverRouteID), {
     context,
   });
   return {
@@ -575,7 +596,7 @@ export async function fetchContainerLogs(
     ...payload,
     project: normalizeService(payload.project),
     container: normalizeContainer(payload.container),
-    logs: arrayOrEmpty(payload.logs),
+    logs: arrayOrEmpty(payload.logs).map(normalizeLogLine),
   };
 }
 
