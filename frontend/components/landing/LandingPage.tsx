@@ -161,9 +161,6 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
             <a className="rounded-full px-4 py-2 text-[0.85rem] text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white/90" href="#pricing">
               Pricing
             </a>
-            <a className="rounded-full px-4 py-2 text-[0.85rem] text-white/60 transition-colors duration-150 hover:bg-white/[0.07] hover:text-white/90" href="#use-cases">
-              Use Cases
-            </a>
           </nav>
 
           {/* CTA – floats independently */}
@@ -261,7 +258,7 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
           </div>
         </section>
 
-        <section className={styles.section} id="highlights">
+        <section className={styles.section} id="features">
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle} style={{ fontSize: "2.5rem" }}>Why Bifrost feels simple</h2>
@@ -567,7 +564,7 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
 
 
 
-        <section className={styles.section} id="testimonials">
+        {/* <section className={styles.section} id="testimonials">
           <div className={styles.container}>
             <div className={styles.sectionHeader}>
               <h2 className={styles.sectionTitle}>Love from developers</h2>
@@ -649,7 +646,7 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
               </div>
             </div>
           </div>
-        </section>
+        </section> */}
 
         <section className={styles.ctaSection}>
           <div className={styles.container}>
@@ -707,8 +704,8 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
 
             <div className={styles.footerColumn}>
               <strong>Workflows</strong>
-              <a href="#use-cases">Use Cases</a>
-              <a href="#supported-environments">Environments</a>
+              {/* <a href="#use-cases">Use Cases</a> */}
+              {/* <a href="#supported-environments">Environments</a> */}
               <Link href="/setup">Admin Setup</Link>
             </div>
 
