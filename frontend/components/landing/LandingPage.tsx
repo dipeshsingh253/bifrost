@@ -200,36 +200,36 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                 <span className="h-[0.45rem] w-[0.45rem] rounded-full bg-[var(--landing-accent)] shadow-[0_0_12px_var(--landing-accent-soft)]" />
                 The Open Source, Lightweight VPS Observability Platform You Need.
               </div>
-                <h1 className="mx-auto w-full max-w-[850px] text-[clamp(2.8rem,5.5vw,4.5rem)] leading-[1.12] font-semibold tracking-[-0.03em] text-white text-balance">
-                  Monitor your VPS and Docker services without the overhead
-                </h1>
-                <p className="mx-auto mt-6 w-full max-w-[600px] text-[1.15rem] leading-[1.6] font-normal text-[color:var(--landing-text-muted)]">
-                  Metrics, services, and logs in one place.<br />
-                  No complex setup. No tool hopping.
-                </p>
+              <h1 className="mx-auto w-full max-w-[850px] text-[clamp(2.8rem,5.5vw,4.5rem)] leading-[1.12] font-semibold tracking-[-0.03em] text-white text-balance">
+                Monitor your VPS and Docker services without the overhead
+              </h1>
+              <p className="mx-auto mt-6 w-full max-w-[600px] text-[1.15rem] leading-[1.6] font-normal text-[color:var(--landing-text-muted)]">
+                Metrics, services, and logs in one place.<br />
+                No complex setup. No tool hopping.
+              </p>
 
-                <div className="mx-auto mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 relative z-5">
-                  <Link
-                    className={styles.buttonPrimary}
-                    style={{ fontSize: "1.05rem", padding: "0.85rem 1.8rem", width: "100%", maxWidth: "240px" }}
-                    href={authHref}
-                  >
-                    Get Started Free
-                  </Link>
-                  <a
-                    className={styles.buttonSecondary}
-                    style={{ fontSize: "1.05rem", padding: "0.85rem 1.8rem", width: "100%", maxWidth: "240px" }}
-                    href="https://github.com/dipeshsingh253/bifrost"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View on GitHub
-                  </a>
-                </div>
-                
-                <p className="mt-5 text-sm text-[color:var(--landing-text-soft)] text-center font-medium">
-                  Free &amp; open source &bull; Self-host or use cloud
-                </p>
+              <div className="mx-auto mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 relative z-5">
+                <Link
+                  className={styles.buttonPrimary}
+                  style={{ fontSize: "1.05rem", padding: "0.85rem 1.8rem", width: "100%", maxWidth: "240px" }}
+                  href={authHref}
+                >
+                  Get Started Free
+                </Link>
+                <a
+                  className={styles.buttonSecondary}
+                  style={{ fontSize: "1.05rem", padding: "0.85rem 1.8rem", width: "100%", maxWidth: "240px" }}
+                  href="https://github.com/dipeshsingh253/bifrost"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View on GitHub
+                </a>
+              </div>
+
+              <p className="mt-5 text-sm text-[color:var(--landing-text-soft)] text-center font-medium">
+                Free &amp; open source &bull; Self-host or use cloud
+              </p>
             </div>
 
             <div className="relative z-3 mt-12 flex justify-center">
@@ -248,9 +248,11 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                       alt="Bifrost dashboard showing server health and metrics"
                       className="h-auto max-w-full rounded-[inherit] object-top"
                       priority
-                      src="/server-dashboard.png"
-                      width={1100}
-                      height={805}
+                      src="/server-overview.png"
+                      width={1889}
+                      height={1049}
+                      quality={100}
+                      unoptimized
                     />
                   </div>
                 </div>
@@ -307,10 +309,12 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                 <div className={styles.zigZagVisual}>
                   <div className={styles.zigZagImageFrame}>
                     <Image
-                      src="/vps-list-zoom.png"
+                      src="/all-servers.png"
                       alt="Bifrost Server List"
-                      width={800}
-                      height={500}
+                      width={1919}
+                      height={1079}
+                      quality={100}
+                      unoptimized
                       className={styles.zigZagImage}
                     />
                   </div>
@@ -328,10 +332,12 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                 <div className={styles.zigZagVisual}>
                   <div className={styles.zigZagImageFrame}>
                     <Image
-                      src="/server-dashboard.png"
+                      src="/server-overview.png"
                       alt="Bifrost Server Dashboard"
-                      width={800}
-                      height={500}
+                      width={1919}
+                      height={1079}
+                      quality={100}
+                      unoptimized
                       style={{ objectPosition: 'center' }}
                       className={styles.zigZagImage}
                     />
@@ -350,10 +356,12 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                 <div className={styles.zigZagVisual}>
                   <div className={styles.zigZagImageFrame}>
                     <Image
-                      src="/demo-dashboard.png"
+                      src="/server-docker-overview.png"
                       alt="Bifrost Compose Grouping"
-                      width={800}
-                      height={500}
+                      width={1917}
+                      height={924}
+                      quality={100}
+                      unoptimized
                       style={{ objectPosition: 'center bottom' }}
                       className={styles.zigZagImage}
                     />
@@ -372,10 +380,12 @@ export function LandingPage({ authHref, authLabel }: LandingPageProps) {
                 <div className={styles.zigZagVisual}>
                   <div className={styles.zigZagImageFrame}>
                     <Image
-                      src="/demo-dashboard.png"
+                      src="/container-logs.png"
                       alt="Bifrost Container Views"
-                      width={800}
-                      height={500}
+                      width={990}
+                      height={513}
+                      quality={100}
+                      unoptimized
                       className={styles.zigZagImage}
                     />
                   </div>
