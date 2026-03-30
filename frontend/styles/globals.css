@@ -81,6 +81,7 @@ html.dark {
 
 html {
   background: var(--color-background);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -88,6 +89,12 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-variant-ligatures: no-contextual;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 * {
