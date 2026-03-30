@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import Link from "next/link";
-import { ArrowRight, Box, Boxes, Activity, Network } from "lucide-react";
+import { ArrowRight, Box, Boxes, Activity } from "lucide-react";
 import type { Service } from "@/lib/types";
 import {
   serverContainerPath,
@@ -49,10 +49,6 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
       return cpuB - cpuA;
     });
 
-    // Count unique exposed ports
-    const allPorts = new Set<string>();
-    services.forEach(s => s.published_ports.forEach(p => allPorts.add(p)));
-
     return {
       projects: sortedProjects,
       standalones: sortedStandalones,
@@ -60,7 +56,6 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
         totalProjects: p.length,
         totalContainers: services.reduce((acc, s) => acc + s.container_count, 0),
         unhealthyCount: unhealthyProjects + unhealthyStandalones,
-        exposedPorts: allPorts.size,
       }
     };
   }, [services]);
@@ -72,11 +67,10 @@ export function ServicesSection({ serverId, services }: { serverId: string; serv
     <div className="mt-8 flex flex-col gap-8">
       <div>
         <h2 className="text-xl font-semibold text-foreground mb-4">Services</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <StatCard label="Total Projects" value={stats.totalProjects} icon={Boxes} />
           <StatCard label="Total Containers" value={stats.totalContainers} icon={Box} />
           <StatCard label="Unhealthy" value={stats.unhealthyCount} icon={Activity} alert={stats.unhealthyCount > 0} />
-          <StatCard label="Exposed Ports" value={stats.exposedPorts} icon={Network} />
         </div>
       </div>
 

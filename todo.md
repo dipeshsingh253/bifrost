@@ -36,6 +36,9 @@
 
 ## ✅ Completed (Do not delete)
 
+- [x] Implement the root-route landing page with a Bifrost-specific premium marketing design
+  - Notes: Replaced the signed-out `/` experience with a new Bifrost landing page that keeps the reference design's premium dark neon feel while swapping in real product messaging around VPS monitoring, Docker service grouping, logs, self-hosted/cloud deployment, and pricing; isolated the landing visuals into a dedicated CSS module and component so marketing colors do not affect the dashboard theme; preserved the existing authenticated `/` systems dashboard by switching the homepage SSR flow to render the landing page only for signed-out visitors and the monitoring table for signed-in users; and validated with `npm test`, `npm run lint`, and `npm run build` in `frontend/`.
+
 - [x] Simplify agent installation to quick copy-paste commands instead of manual config-file setup
   - Notes: Added env-based agent configuration loading so the agent can boot and self-enroll without a handwritten `config.yaml`, added a public backend installer script at `/api/v1/install/agent.sh` that writes an env file, extracts the agent binary from the Docker image, installs a systemd service, and starts it, extended onboarding responses with `install_script_url`, `docker_run_command`, and `systemd_install_command`, reshaped the Add System drawer so Quick Install is the primary step and the raw config/token are pushed into an advanced fallback step, and validated with `go test ./...` in `backend/` and `agent/`, plus `npm test`, `npm run lint`, and `npm run build` in `frontend/`, followed by a live frontend-backed onboarding request that returned the new quick-install commands.
 

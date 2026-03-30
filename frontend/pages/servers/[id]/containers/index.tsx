@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Layout } from "@/components/Layout";
 import { ArrowLeft, Search, Box } from "lucide-react";
 import {
+  fetchAllContainers,
   fetchStandaloneContainers,
   getApiErrorMessage,
   isApiErrorCode,
@@ -20,17 +21,24 @@ type ContainersListProps = {
   server: Server | null;
   containers: Container[];
   loadError: string | null;
+  scope: "all" | "standalone";
 } & AuthenticatedPageProps;
 
-export default function ContainersList({ server, containers, currentUser, loadError }: ContainersListProps) {
+export default function ContainersList({ server, containers, currentUser, loadError, scope }: ContainersListProps) {
   const [search, setSearch] = useState("");
+  const isAllContainers = scope === "all";
+  const pageTitle = isAllContainers ? "All Containers" : "Standalone Containers";
+  const unavailableTitle = isAllContainers
+    ? "Container inventory is temporarily unavailable."
+    : "Standalone containers are temporarily unavailable.";
+  const emptyLabel = isAllContainers ? "containers" : "standalone containers";
 
   if (loadError) {
     return (
       <Layout currentUser={currentUser}>
         <MonitoringUnavailableState
           message={loadError}
-          title="Standalone containers are temporarily unavailable."
+          title={unavailableTitle}
         />
       </Layout>
     );
@@ -51,7 +59,7 @@ export default function ContainersList({ server, containers, currentUser, loadEr
   return (
     <>
       <Head>
-        <title>{`Standalone Containers · ${server.name} · Bifrost`}</title>
+        <title>{`${pageTitle} · ${server.name} · Bifrost`}</title>
       </Head>
       <Layout currentUser={currentUser}>
         <div className="mb-6 flex flex-col gap-4">
@@ -61,19 +69,19 @@ export default function ContainersList({ server, containers, currentUser, loadEr
               {server.name}
             </Link>
             <span className="text-border">/</span>
-            <span className="text-foreground font-medium">Standalone Containers</span>
+            <span className="text-foreground font-medium">{pageTitle}</span>
           </nav>
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
               <Box className="h-6 w-6 text-muted-foreground" />
-              Standalone Containers ({containers.length})
+              {pageTitle} ({containers.length})
             </h1>
             <div className="relative">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search containers..."
+                placeholder={isAllContainers ? "Search containers..." : "Search standalone containers..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="h-9 w-full sm:w-64 rounded-md border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:ring-1 focus:ring-ring"
@@ -85,7 +93,7 @@ export default function ContainersList({ server, containers, currentUser, loadEr
         <div className="grid gap-3">
           {filteredContainers.length === 0 ? (
             <div className="rounded-lg border border-border bg-card p-12 text-center text-muted-foreground">
-              No standalone containers found matching &quot;{search}&quot;.
+              No {emptyLabel} found matching &quot;{search}&quot;.
             </div>
           ) : (
             filteredContainers.map((c) => {
@@ -139,24 +147,39 @@ export default function ContainersList({ server, containers, currentUser, loadEr
 export const getServerSideProps: GetServerSideProps<ContainersListProps> = async (context) => {
   const serverRouteID = context.params?.id;
   if (typeof serverRouteID !== "string") {
-    return requireAuthenticatedPage(context, async () => ({ server: null, containers: [], loadError: null }));
+    return requireAuthenticatedPage(context, async () => ({
+      server: null,
+      containers: [],
+      loadError: null,
+      scope: "standalone",
+    }));
   }
 
   return requireAuthenticatedPage(context, async () => {
+    const scope = context.query.scope === "all" ? "all" : "standalone";
     try {
-      const data = await fetchStandaloneContainers(serverRouteID, context);
-      return { server: data.server, containers: data.containers, loadError: null };
+      const data =
+        scope === "all"
+          ? await fetchAllContainers(serverRouteID, context)
+          : await fetchStandaloneContainers(serverRouteID, context);
+      return { server: data.server, containers: data.containers, loadError: null, scope };
     } catch (error) {
       if (isApiErrorStatus(error, 401)) {
         throw error;
       }
       if (isApiErrorCode(error, "SERVER_NOT_FOUND")) {
-        return { server: null, containers: [], loadError: null };
+        return { server: null, containers: [], loadError: null, scope };
       }
       return {
         server: null,
         containers: [],
-        loadError: getApiErrorMessage(error, "Failed to load standalone containers from the backend."),
+        scope,
+        loadError: getApiErrorMessage(
+          error,
+          scope === "all"
+            ? "Failed to load containers from the backend."
+            : "Failed to load standalone containers from the backend."
+        ),
       };
     }
   });

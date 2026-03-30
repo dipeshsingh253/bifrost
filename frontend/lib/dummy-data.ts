@@ -269,6 +269,7 @@ const LOG_MESSAGES = [
 
 export function generateContainerLogs(containerName: string, serviceTag: string, count: number, containerId: string = ""): LogLine[] {
   const now = Date.now();
+  const levels: LogLine["level"][] = ["info", "warn", "error"];
   return Array.from({ length: count }, (_, i) => {
     const msg = LOG_MESSAGES[Math.floor(seededRandom() * LOG_MESSAGES.length)];
     return {
@@ -277,6 +278,7 @@ export function generateContainerLogs(containerName: string, serviceTag: string,
       containerId,
       containerName,
       serviceTag,
+      level: levels[Math.floor(seededRandom() * levels.length)],
       message: msg,
     };
   });

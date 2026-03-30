@@ -41,8 +41,19 @@ export function Layout({ children, currentUser }: LayoutProps) {
           <div className="flex items-center gap-3">
             <Link
               href="/"
-              className="text-xl font-bold tracking-tight text-foreground hover:opacity-90 transition-opacity"
+              className="flex items-center gap-2.5 text-[1.1rem] font-bold tracking-tight text-foreground hover:opacity-90 transition-opacity"
             >
+              <svg
+                className="h-5 w-5 text-success drop-shadow-sm"
+                viewBox="0 0 32 32"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path d="M16 4.5L5.5 10.5L16 16.5L26.5 10.5L16 4.5Z" fill="currentColor" />
+                <path d="M5.5 16.5L16 22.5L26.5 16.5" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5.5 22.5L16 28.5L26.5 22.5" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+              </svg>
               Bifrost
             </Link>
 

@@ -6,7 +6,6 @@ import { ArrowLeft, Box, Activity, Clock, RefreshCw, Hash, Calendar, Shield, Ser
 import { Layout } from "@/components/Layout";
 import {
   fetchContainerDetail,
-  fetchContainerEnv,
   getApiErrorMessage,
   isApiErrorCode,
   isApiErrorStatus,
@@ -33,7 +32,6 @@ type ContainerDetailProps = {
     network: MetricPoint[];
   };
   logs: LogLine[];
-  env: Record<string, string>;
   loadError: string | null;
   notFoundKind: DetailNotFoundKind;
 } & AuthenticatedPageProps;
@@ -44,7 +42,6 @@ export default function ContainerDetail({
   container,
   metrics,
   logs,
-  env,
   loadError,
   notFoundKind,
   currentUser,
@@ -299,25 +296,6 @@ export default function ContainerDetail({
                 </div>
               </div>
             </div>
-
-            {/* ── Env Vars ── */}
-            <div>
-              <h2 className="text-lg font-semibold text-foreground mb-4">Environment Variables</h2>
-              <div className="rounded-lg border border-border bg-card p-4">
-                <div className="flex flex-col gap-2">
-                  {Object.entries(env).map(([k, v]) => (
-                    <div key={k} className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0 gap-1">
-                      <span className="text-sm text-[hsl(280_65%_70%)] font-mono truncate">{k}</span>
-                      <span className="text-xs text-foreground font-mono break-all">{v}</span>
-                    </div>
-                  ))}
-                  <div className="text-xs text-muted-foreground mt-2 italic text-center">
-                    ({Object.keys(env).length} variables)
-                  </div>
-                </div>
-              </div>
-            </div>
-
           </div>
         </div>
       </Layout>
@@ -335,7 +313,6 @@ export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = asyn
         container: null,
         metrics: { cpu: [], memory: [], network: [] },
         logs: [],
-        env: {},
         loadError: null,
         notFoundKind: null,
       }));
@@ -343,11 +320,10 @@ export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = asyn
 
   return requireAuthenticatedPage(context, async () => {
     try {
-      const [detail, metrics, logs, env] = await Promise.all([
+      const [detail, metrics, logs] = await Promise.all([
         fetchContainerDetail(serverRouteID, containerRouteID, context),
         fetchContainerMetrics(serverRouteID, containerRouteID, context),
         fetchContainerLogs(serverRouteID, containerRouteID, context),
-        fetchContainerEnv(serverRouteID, containerRouteID, context),
       ]);
 
       return {
@@ -356,7 +332,6 @@ export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = asyn
         container: detail.container,
         metrics: metrics.metrics,
         logs: logs.logs,
-        env: env.env,
         loadError: null,
         notFoundKind: null,
       };
@@ -372,7 +347,6 @@ export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = asyn
           container: null,
           metrics: { cpu: [], memory: [], network: [] },
           logs: [],
-          env: {},
           loadError: null,
           notFoundKind,
         };
@@ -383,7 +357,6 @@ export const getServerSideProps: GetServerSideProps<ContainerDetailProps> = asyn
         container: null,
         metrics: { cpu: [], memory: [], network: [] },
         logs: [],
-        env: {},
         loadError: getApiErrorMessage(error, "Failed to load container details from the backend."),
         notFoundKind: null,
       };

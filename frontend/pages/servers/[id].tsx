@@ -20,6 +20,7 @@ import { StackedAreaChart } from "@/components/charts/StackedAreaChart";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ServicesSection } from "@/components/server/ServicesSection";
+import { ServerOverview } from "@/components/server/ServerOverview";
 import type { ServerBundle } from "@/lib/types";
 import { buildContainerMetricSeries, filterContainerMetricSeries } from "@/lib/container-metrics";
 
@@ -117,6 +118,8 @@ export default function ServerDetail({ bundle, currentUser, loadError }: ServerD
             </div>
           </div>
         </div>
+
+        <ServerOverview serverId={server.id} services={services} />
 
         {/* ── Chart Grid ── */}
         <div className={`grid gap-4 ${gridCols}`}>

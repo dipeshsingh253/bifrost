@@ -378,7 +378,9 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
                 <div
                   key={key}
                   className={`rounded-lg border px-3 py-3 text-left transition-colors ${
-                    active ? "border-foreground bg-background" : "border-border bg-background/50"
+                    active
+                      ? "border-[hsl(140_50%_48%)]/45 bg-[hsl(140_50%_48%)]/8 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.08)]"
+                      : "border-border bg-background/50"
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -386,13 +388,15 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
                       className={`flex h-8 w-8 items-center justify-center rounded-md border ${
                         complete
                           ? "border-[hsl(140_50%_48%)] bg-[hsl(140_50%_48%)]/10 text-[hsl(140_50%_48%)]"
+                          : active
+                            ? "border-[hsl(140_50%_48%)]/35 bg-[hsl(140_50%_48%)]/10 text-[hsl(140_50%_48%)]"
                           : "border-border"
                       }`}
                     >
                       {complete ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                      <div className={`text-[11px] uppercase tracking-[0.2em] ${active ? "text-[hsl(140_50%_48%)]" : "text-muted-foreground"}`}>
                         Step {index + 1}
                       </div>
                       <div className="truncate text-sm font-medium text-foreground">{title}</div>
@@ -544,32 +548,42 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
           {step === "config" && activeSystem && canRenderConfig ? (
             <div className="space-y-5">
               <div className="rounded-xl border border-border bg-background/60 p-4">
-                <div className="text-sm font-medium text-foreground">Quick Install</div>
+                <div className="text-sm font-medium text-foreground">Step 2 · Quick Install</div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   Copy one command and run it on the target host. The first agent startup will exchange the bootstrap token for a long-lived API key automatically.
                 </p>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoCard label="Server ID" value={activeSystem.server_id} />
-                <InfoCard label="Agent ID" value={activeSystem.agent_id} />
-                <InfoCard label="Backend URL" value={activeSystem.backend_url as string} />
-                <InfoCard label="Status" value={activeSystem.status} />
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <div className="text-sm font-medium text-foreground">Step 2: Run the agent</div>
+                <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                  <div>1. Copy the command below</div>
+                  <div>2. Run it on your VPS</div>
+                  <div>3. Come back here and wait for the system to connect</div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <InstallModeButton
-                  active={selectedInstallTab === "docker"}
-                  description="Containerized one-command install."
-                  label="Docker"
-                  onClick={() => setSelectedInstallTab("docker")}
-                />
-                <InstallModeButton
-                  active={selectedInstallTab === "systemd"}
-                  description="Host service script. Recommended."
-                  label="systemd"
-                  onClick={() => setSelectedInstallTab("systemd")}
-                />
+              <div className="rounded-xl border border-border bg-background/40 p-4">
+                <div className="text-sm font-medium text-foreground">Install Mode</div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <InstallModeButton
+                    active={selectedInstallTab === "docker"}
+                    description="Containerized one-command install."
+                    label="Docker"
+                    onClick={() => setSelectedInstallTab("docker")}
+                  />
+                  <InstallModeButton
+                    active={selectedInstallTab === "systemd"}
+                    description="Host service script. Recommended."
+                    label="systemd"
+                    onClick={() => setSelectedInstallTab("systemd")}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  {selectedInstallTab === "docker"
+                    ? "Docker selected -> run as container"
+                    : "systemd selected -> run as host service"}
+                </p>
               </div>
 
               <ConfigSection
@@ -578,10 +592,48 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
                     ? "Runs the agent directly from the container image using environment variables instead of a handwritten config file."
                     : "Fetches the installer script, extracts the agent binary from the Docker image, installs the systemd unit, and starts the service."
                 }
+                helperHint="Run this command on your server"
+                highlighted
                 label={selectedInstallTab === "docker" ? "Docker Command" : "systemd Install Command"}
-                onCopy={() => void copyText("Install commands", selectedInstallTab === "docker" ? dockerCommand : systemdCommand)}
+                copyLabel={
+                  copyFeedback === "Install command copied."
+                    ? "Copied ✓"
+                    : "Copy"
+                }
+                onCopy={() =>
+                  void copyText(
+                    "Install command",
+                    selectedInstallTab === "docker" ? dockerCommand : systemdCommand
+                  )
+                }
                 value={selectedInstallTab === "docker" ? dockerCommand : systemdCommand}
               />
+
+              <details className="rounded-xl border border-border bg-background/30">
+                <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left">
+                  <div>
+                    <div className="text-sm font-medium text-foreground">Advanced Info</div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      IDs and connection details for manual verification only.
+                    </div>
+                  </div>
+                  <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Optional</span>
+                </summary>
+                <div className="grid gap-2 border-t border-border px-4 py-4 sm:grid-cols-2">
+                  <InfoCard label="Server ID" subtle value={activeSystem.server_id} />
+                  <InfoCard label="Agent ID" subtle value={activeSystem.agent_id} />
+                  <InfoCard label="Backend URL" subtle value={activeSystem.backend_url as string} />
+                  <InfoCard
+                    label="Status"
+                    subtle
+                    value={
+                      activeSystem.status === "awaiting_connection"
+                        ? "Waiting for agent to connect..."
+                        : activeSystem.status
+                    }
+                  />
+                </div>
+              </details>
             </div>
           ) : null}
 
@@ -709,21 +761,26 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
           </div>
 
           {step === "config" ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              <button
-                className="inline-flex h-11 items-center justify-center rounded-md border border-border bg-foreground px-4 text-sm font-medium text-background transition hover:opacity-90"
-                onClick={() => setStep("waiting")}
-                type="button"
-              >
-                Continue To Waiting State
-              </button>
-              <button
-                className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                onClick={() => setStep("install")}
-                type="button"
-              >
-                View Advanced Manual Setup
-              </button>
+            <div className="mt-3">
+              <div className="mb-3 text-sm font-medium text-[hsl(140_50%_48%)]">
+                Waiting for agent to connect...
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-md border border-[hsl(140_50%_48%)]/40 bg-[hsl(140_50%_48%)] px-4 text-sm font-medium text-[hsl(220_22%_10%)] transition hover:opacity-90"
+                  onClick={() => setStep("waiting")}
+                  type="button"
+                >
+                  Continue To Waiting State
+                </button>
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-md border border-border px-4 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  onClick={() => setStep("install")}
+                  type="button"
+                >
+                  View Advanced Manual Setup
+                </button>
+              </div>
             </div>
           ) : null}
 
@@ -756,61 +813,87 @@ function InstallModeButton({
   return (
     <button
       className={`rounded-lg border px-4 py-3 text-left transition-colors ${
-        active ? "border-foreground bg-background" : "border-border bg-background/40 hover:bg-background/70"
+        active
+          ? "border-[hsl(140_50%_48%)]/45 bg-[hsl(140_50%_48%)]/10 shadow-[inset_0_0_0_1px_rgba(34,197,94,0.08)]"
+          : "border-border bg-background/40 hover:bg-background/70"
       }`}
       onClick={onClick}
       type="button"
     >
-      <div className="text-sm font-medium text-foreground">{label}</div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm font-medium text-foreground">{label}</div>
+        {active ? <Check className="h-4 w-4 text-[hsl(140_50%_48%)]" /> : null}
+      </div>
       <div className="mt-1 text-xs text-muted-foreground">{description}</div>
     </button>
   );
 }
 
-function InfoCard({ label, value }: { label: string; value: string }) {
+function InfoCard({ label, subtle = false, value }: { label: string; subtle?: boolean; value: string }) {
   return (
-    <div className="rounded-lg border border-border bg-background/40 p-4">
+    <div className={`rounded-lg border ${subtle ? "border-border/70 bg-background/20 p-3" : "border-border bg-background/40 p-4"}`}>
       <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{label}</div>
-      <div className="mt-2 break-all font-mono text-xs text-foreground">{value}</div>
+      <div className={`mt-2 break-all font-mono ${subtle ? "text-[11px] text-muted-foreground" : "text-xs text-foreground"}`}>{value}</div>
     </div>
   );
 }
 
 function ConfigSection({
+  copyLabel = "Copy",
   description,
+  helperHint,
+  highlighted = false,
   label,
   onCopy,
   value,
 }: {
+  copyLabel?: string;
   description: string;
+  helperHint?: string;
+  highlighted?: boolean;
   label: string;
   onCopy: () => void;
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-background/40">
+    <div
+      className={`rounded-xl border ${
+        highlighted
+          ? "border-[hsl(140_50%_48%)]/20 bg-[#090b0a] shadow-[0_0_0_1px_rgba(34,197,94,0.08),0_18px_40px_rgba(0,0,0,0.22)]"
+          : "border-border bg-background/40"
+      }`}
+    >
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <div className="text-sm font-medium text-foreground">{label}</div>
           <div className="text-xs text-muted-foreground">{description}</div>
+          {helperHint ? <div className="mt-1 text-xs text-[hsl(140_50%_48%)]">{helperHint}</div> : null}
         </div>
         <button
-          className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-accent"
+          className={`inline-flex items-center gap-1 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
+            highlighted
+              ? "border-[hsl(140_50%_48%)]/30 bg-[hsl(140_50%_48%)]/10 text-[hsl(140_50%_48%)] hover:bg-[hsl(140_50%_48%)]/15"
+              : "border-border text-foreground hover:bg-accent"
+          }`}
           onClick={onCopy}
           type="button"
         >
           <Copy className="h-3.5 w-3.5" />
-          Copy
+          {copyLabel}
         </button>
       </div>
-      <CodeBlock value={value} />
+      <CodeBlock highlighted={highlighted} value={value} />
     </div>
   );
 }
 
-function CodeBlock({ value }: { value: string }) {
+function CodeBlock({ highlighted = false, value }: { highlighted?: boolean; value: string }) {
   return (
-    <pre className="max-h-[280px] overflow-x-auto overflow-y-auto p-4 text-xs leading-6 text-foreground">
+    <pre
+      className={`max-h-[280px] overflow-x-auto overflow-y-auto p-5 font-mono text-[13px] leading-6 text-foreground ${
+        highlighted ? "bg-[#050607]" : ""
+      }`}
+    >
       <code>{value}</code>
     </pre>
   );

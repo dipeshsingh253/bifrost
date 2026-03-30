@@ -1,7 +1,4 @@
-# Next Steps
-
-1. Copy [.env.example](/home/kakarot/projects/bifrost/.env.example) to `.env` and set the production values for your public backend URL, JWT secret, and shared PostgreSQL connection string.
-2. Create the external Docker network once with `docker network create internal_net` if it does not already exist on the server.
-3. From [docker-compose.yml](/home/kakarot/projects/bifrost/docker-compose.yml), run `docker compose pull`, then `docker compose run --rm bifrost-backend migrate -path /app/migrations -database "$BIFROST_DATABASE_URL" up`.
-4. Start the stack with `docker compose up -d`, then open the deployed frontend, sign in, and confirm the dashboard and all `/settings/*` pages load without API errors.
-5. Run a fresh agent install against the deployed backend and confirm a monitored server connects successfully.
+1. Open the Add System flow and complete Step 1 so you reach Step 2: Quick Install.
+2. Verify the instruction block appears above the install mode selector, and the install command is now the main visual focus.
+3. Click Copy in the command block and confirm the button changes to `Copied ✓` temporarily.
+4. Confirm the primary CTA is `Continue To Waiting State`, the advanced manual path is lower emphasis, and the IDs/backend details sit under the collapsed Advanced Info section.
