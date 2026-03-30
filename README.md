@@ -1,5 +1,7 @@
 # Bifrost
 
+> Currently in beta and improving it constantly to make it more secure and ready to use in production.
+
 Bifrost is a lightweight server and container monitoring product with three parts:
 
 - `backend/`: Go API and ingest service
