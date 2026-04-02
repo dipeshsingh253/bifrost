@@ -12,7 +12,7 @@ import (
 
 func TestEnsureEnrollmentPersistsRotatedAPIKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/api/v1/agents/enroll" {
+		if r.URL.Path != "/api/v1/agent/enroll" {
 			t.Fatalf("expected enroll path, got %s", r.URL.Path)
 		}
 		if r.Header.Get("X-Agent-Key") != "bootstrap-token" {

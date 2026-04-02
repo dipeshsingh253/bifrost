@@ -6,6 +6,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await proxyApiRequest(req, res, {
     allowBody: true,
     method: "PATCH",
-    path: "/api/v1/me",
+    path: "/api/v1/auth/me",
   });
 }

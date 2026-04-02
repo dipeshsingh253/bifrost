@@ -31,7 +31,7 @@ Run locally:
 cd backend
 cp .env.example .env
 # point BIFROST_DATABASE_URL at your PostgreSQL instance
-go run .
+go run ./cmd/api
 
 cd ../frontend
 npm install
@@ -46,6 +46,25 @@ Default local URLs:
 
 - Frontend: `http://localhost:3000`
 - Backend: `http://localhost:8080`
+
+## Security Hardening
+
+Bifrost now includes backend availability guardrails meant to keep a small self-hosted install alive under common abuse:
+
+- request body size limits on auth, admin, and agent endpoints
+- in-memory rate limiting for login, invite acceptance, enroll, heartbeat, snapshot ingest, and authenticated reads
+- explicit server read/write/header/idle timeouts
+- concurrent request caps, including a tighter cap for snapshot ingest
+- trusted proxy handling disabled by default unless `BIFROST_TRUSTED_PROXIES` is configured
+- agent binary download disabled unless `BIFROST_AGENT_BINARY_PATH` points at a readable file
+
+Recommended deployment posture:
+
+- terminate TLS at a reverse proxy
+- expose only the frontend publicly when possible
+- keep the backend behind proxy rate limits if it is internet-facing
+- mirror the backend body-size limits at the proxy
+- only enable `/api/v1/agent/install` when you intentionally publish a static agent binary
 
 ## Environment Files
 

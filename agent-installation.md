@@ -93,7 +93,7 @@ docker volume rm -f bifrost-agent-data 2>/dev/null || true
 The host install flow uses the backend installer script:
 
 ```bash
-curl -fsSL 'http://your-backend:8080/api/v1/install/agent.sh' | sudo env \
+curl -fsSL 'http://your-backend:8080/api/v1/agent/install.sh' | sudo env \
   BIFROST_AGENT_ID='...' \
   BIFROST_SERVER_ID='...' \
   BIFROST_SERVER_NAME='...' \

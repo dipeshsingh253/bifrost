@@ -928,7 +928,7 @@ function buildDockerCommand(system: SystemOnboardingRecord): string {
 
 function buildSystemdCommand(system: SystemOnboardingRecord): string {
   return [
-    `curl -fsSL ${shellEnvQuote((system.install_script_url || `${system.backend_url || ""}/api/v1/install/agent.sh`).replace(/\/+$/, ""))} | sudo env \\`,
+    `curl -fsSL ${shellEnvQuote((system.install_script_url || `${system.backend_url || ""}/api/v1/agent/install.sh`).replace(/\/+$/, ""))} | sudo env \\`,
     `  BIFROST_AGENT_ID=${shellEnvQuote(system.agent_id)} \\`,
     `  BIFROST_SERVER_ID=${shellEnvQuote(system.server_id)} \\`,
     `  BIFROST_SERVER_NAME=${shellEnvQuote(system.name)} \\`,
