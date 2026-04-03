@@ -120,7 +120,7 @@ func (c *Client) Enroll(agentID, serverID string) (string, error) {
 		return "", err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/agents/enroll", bytes.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/agent/enroll", bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
@@ -163,7 +163,7 @@ func (c *Client) PushSnapshot(agentID string, server ServerSnapshot, metrics []M
 		return err
 	}
 
-	request, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/ingest/snapshot", bytes.NewReader(body))
+	request, err := http.NewRequest(http.MethodPost, c.baseURL+"/api/v1/agent/snapshot", bytes.NewReader(body))
 	if err != nil {
 		return err
 	}
