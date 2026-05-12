@@ -79,8 +79,11 @@ func TestCreateGetAndListRoundTripSystemOnboardingView(t *testing.T) {
 	if !strings.Contains(created.DockerRunCommand, "-v /:/hostfs:ro") || !strings.Contains(created.DockerRunCommand, "BIFROST_HOST_ROOT='/hostfs'") {
 		t.Fatalf("expected docker command to mount the host filesystem for host metrics, got %q", created.DockerRunCommand)
 	}
-	if !strings.Contains(created.DockerRunCommand, "'bifrost-agent:latest'") {
-		t.Fatalf("expected docker command to use the configured agent image, got %q", created.DockerRunCommand)
+	if !strings.Contains(created.DockerRunCommand, `docker pull "$AGENT_IMAGE"`) {
+		t.Fatalf("expected docker command to pull the latest image before start, got %q", created.DockerRunCommand)
+	}
+	if !strings.Contains(created.DockerRunCommand, `"$AGENT_IMAGE"`) {
+		t.Fatalf("expected docker command to run the configured agent image, got %q", created.DockerRunCommand)
 	}
 	if !strings.Contains(created.DockerRunCommand, "BIFROST_COLLECT_DOCKER='true'") || !strings.Contains(created.DockerRunCommand, "BIFROST_DOCKER_INCLUDE_ALL='true'") {
 		t.Fatalf("expected docker command to explicitly enable full docker collection, got %q", created.DockerRunCommand)

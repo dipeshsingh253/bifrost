@@ -185,6 +185,9 @@ func installScriptURL(backendURL string) string {
 
 func renderDockerRunCommand(onboarding domain.SystemOnboarding, backendURL, dockerImage string) string {
 	return strings.Join([]string{
+		"AGENT_IMAGE=" + shellQuote(dockerImage),
+		`docker pull "$AGENT_IMAGE" && \`,
+		`(docker rm -f bifrost-agent >/dev/null 2>&1 || true) && \`,
 		"docker run -d \\",
 		"  --name bifrost-agent \\",
 		"  --restart unless-stopped \\",
@@ -206,7 +209,7 @@ func renderDockerRunCommand(onboarding domain.SystemOnboarding, backendURL, dock
 		"  -e BIFROST_COLLECT_DOCKER='true' \\",
 		"  -e BIFROST_COLLECT_LOGS='true' \\",
 		"  -e BIFROST_DOCKER_INCLUDE_ALL='true' \\",
-		"  " + shellQuote(dockerImage),
+		`  "$AGENT_IMAGE"`,
 	}, "\n")
 }
 

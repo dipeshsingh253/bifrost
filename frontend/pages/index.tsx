@@ -1,6 +1,6 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import Link from "next/link";
+import { useRouter } from "next/router";
 import { useState, useMemo } from "react";
 
 import { LandingPage } from "@/components/landing/LandingPage";
@@ -238,11 +238,24 @@ export default function Home({ bundles, currentUser, isLanding, landingAuthHref,
 function ServerRow({ bundle }: { bundle: ServerListItem }) {
   const { server } = bundle;
   const isUp = server.status === "up";
+  const router = useRouter();
+  const href = serverPath(server.id);
 
   return (
-    <tr className="group cursor-pointer transition-colors hover:bg-accent/50">
+    <tr
+      className="group cursor-pointer transition-colors hover:bg-accent/50"
+      onClick={() => void router.push(href)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          void router.push(href);
+        }
+      }}
+      tabIndex={0}
+      role="link"
+    >
       <td className="px-4 py-3.5">
-        <Link href={serverPath(server.id)} className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5">
           <span
             className={`h-2.5 w-2.5 rounded-full shrink-0 ${isUp ? "bg-success" : "bg-destructive"}`}
           />
@@ -250,7 +263,7 @@ function ServerRow({ bundle }: { bundle: ServerListItem }) {
             {server.name}
           </span>
           <RefreshCw className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </Link>
+        </div>
       </td>
       <td className="px-4 py-3.5 min-w-[160px]">
         <Meter value={server.cpu_usage_pct} />
@@ -274,10 +287,16 @@ function ServerRow({ bundle }: { bundle: ServerListItem }) {
       </td>
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-1">
-          <button className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+          <button
+            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(event) => event.stopPropagation()}
+          >
             <Bell className="h-4 w-4" />
           </button>
-          <button className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+          <button
+            className="rounded p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            onClick={(event) => event.stopPropagation()}
+          >
             <MoreHorizontal className="h-4 w-4" />
           </button>
         </div>
