@@ -1,22 +1,20 @@
-agent_id: 5b8b7684-f4e3-44a9-8fc6-a58a6110b541
-server_id: 9329fc4b-4d0d-4d3a-8fcb-53f87d7d9e0d
-server_name: dev-server
-tenant_id: c4fa4fd6-8101-4c17-a89a-a46ad3caab18
+agent_id: c4eb43d0-e69e-4399-b66b-e2693a475b90
+server_id: fe4fdbb4-3284-42f0-8ed6-fcf713fcbc80
+server_name: Local pc
+tenant_id: f57ed972-972e-46c3-bf4b-5016c0d43481
 backend_url: http://localhost:8080
-api_key: demo-agent-key
+api_key: 4060da88ddb10a6418748e6e4961410ff0bc949bff334c7269784c4fab368aa1
+enrollment_token: ""
 poll_interval_seconds: 10
-
 collectors:
-  host: true
-  docker: true
-  logs: true
-
+    host: true
+    docker: true
+    logs: true
 docker:
-  include_all: true
-  include_projects: []
-  include_containers: []
-  exclude_projects: []
-  exclude_containers: []
-
+    include_all: true
+    include_projects: []
+    include_containers: []
+    exclude_projects: []
+    exclude_containers: []
 logs:
-  max_lines_per_fetch: 200
+    max_lines_per_fetch: 200

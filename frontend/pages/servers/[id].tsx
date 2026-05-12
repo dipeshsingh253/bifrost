@@ -1,12 +1,11 @@
 import Head from "next/head";
 import type { GetServerSideProps } from "next";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { useRouter } from "next/router";
 import { Layout } from "@/components/Layout";
 import {
-  fetchServerBundle,
   getApiErrorMessage,
-  isApiErrorCode,
-  isApiErrorStatus,
+  readBrowserApiPayload,
   requireAuthenticatedPage,
   type AuthenticatedPageProps,
 } from "@/lib/api";
@@ -25,14 +24,96 @@ import type { ServerBundle } from "@/lib/types";
 import { buildContainerMetricSeries, filterContainerMetricSeries } from "@/lib/container-metrics";
 
 type ServerDetailProps = {
-  bundle: ServerBundle | null;
-  loadError: string | null;
+  serverRouteID: string | null;
 } & AuthenticatedPageProps;
 
-export default function ServerDetail({ bundle, currentUser, loadError }: ServerDetailProps) {
+export default function ServerDetail({ serverRouteID, currentUser }: ServerDetailProps) {
+  const router = useRouter();
   const [timeRange, setTimeRange] = useState(() => readAppearanceSettings().defaultTimeRange);
   const [grid, setGrid] = useState(true);
   const [containerFilter, setContainerFilter] = useState("");
+  const [bundle, setBundle] = useState<ServerBundle | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(Boolean(serverRouteID));
+
+  useEffect(() => {
+    if (!serverRouteID) {
+      setBundle(null);
+      setLoadError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadBundle() {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const response = await fetch(`/api/servers/${encodeURIComponent(serverRouteID)}`);
+
+        if (response.status === 401) {
+          void router.push("/login");
+          return;
+        }
+
+        if (response.status === 404) {
+          if (!isMounted) {
+            return;
+          }
+          setBundle(null);
+          setLoadError(null);
+          return;
+        }
+
+        const nextBundle = await readBrowserApiPayload<ServerBundle>(
+          response,
+          "Failed to load system details from the backend."
+        );
+
+        if (!isMounted) {
+          return;
+        }
+
+        setBundle(nextBundle);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+        setBundle(null);
+        setLoadError(getApiErrorMessage(error, "Failed to load system details from the backend."));
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadBundle();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, serverRouteID]);
+
+  if (isLoading) {
+    return (
+      <>
+        <Head>
+          <title>Loading system details · Bifrost</title>
+        </Head>
+        <Layout currentUser={currentUser}>
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <div className="text-center">
+              <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-border border-t-success" />
+              <div className="mt-4 text-sm text-muted-foreground">Loading system details...</div>
+            </div>
+          </div>
+        </Layout>
+      </>
+    );
+  }
 
   if (loadError) {
     return (
@@ -247,26 +328,10 @@ export default function ServerDetail({ bundle, currentUser, loadError }: ServerD
 export const getServerSideProps: GetServerSideProps<ServerDetailProps> = async (context) => {
   const serverRouteID = context.params?.id;
   if (typeof serverRouteID !== "string") {
-    return requireAuthenticatedPage(context, async () => ({ bundle: null, loadError: null }));
+    return requireAuthenticatedPage(context, async () => ({ serverRouteID: null }));
   }
 
-  return requireAuthenticatedPage(context, async () => {
-    try {
-      const bundle = await fetchServerBundle(serverRouteID, context);
-      return { bundle, loadError: null };
-    } catch (error) {
-      if (isApiErrorStatus(error, 401)) {
-        throw error;
-      }
-      if (isApiErrorCode(error, "SERVER_NOT_FOUND")) {
-        return { bundle: null, loadError: null };
-      }
-      return {
-        bundle: null,
-        loadError: getApiErrorMessage(error, "Failed to load system details from the backend."),
-      };
-    }
-  });
+  return requireAuthenticatedPage(context, async () => ({ serverRouteID }));
 };
 
 // ── Dual area chart (for Bandwidth and Disk I/O) ──

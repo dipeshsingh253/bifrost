@@ -12,7 +12,7 @@ func TestEnrollReturnsRotatedAPIKey(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST enroll request, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/agents/enroll" {
+		if r.URL.Path != "/api/v1/agent/enroll" {
 			t.Fatalf("expected enroll path, got %s", r.URL.Path)
 		}
 		if r.Header.Get("X-Agent-Key") != "bootstrap-token" {
@@ -48,7 +48,7 @@ func TestPushSnapshotUsesConfiguredAgentID(t *testing.T) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST snapshot request, got %s", r.Method)
 		}
-		if r.URL.Path != "/api/v1/ingest/snapshot" {
+		if r.URL.Path != "/api/v1/agent/snapshot" {
 			t.Fatalf("expected ingest path, got %s", r.URL.Path)
 		}
 

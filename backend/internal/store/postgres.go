@@ -22,6 +22,10 @@ type PostgresStore struct {
 	db *sql.DB
 }
 
+func NewPostgresStoreFromDB(db *sql.DB) *PostgresStore {
+	return &PostgresStore{db: db}
+}
+
 func NewPostgresStore(databaseURL string) (*PostgresStore, error) {
 	db, err := sql.Open("pgx", databaseURL)
 	if err != nil {
@@ -35,7 +39,7 @@ func NewPostgresStore(databaseURL string) (*PostgresStore, error) {
 		return nil, err
 	}
 
-	return &PostgresStore{db: db}, nil
+	return NewPostgresStoreFromDB(db), nil
 }
 
 func (s *PostgresStore) Close() error {

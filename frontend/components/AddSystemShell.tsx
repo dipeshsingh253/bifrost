@@ -589,10 +589,14 @@ export function AddSystemShell({ isOpen, onClose }: AddSystemShellProps) {
               <ConfigSection
                 description={
                   selectedInstallTab === "docker"
-                    ? "Runs the agent directly from the container image using environment variables instead of a handwritten config file."
+                    ? "Pulls the latest agent image, replaces any existing bifrost-agent container, and starts the container with the onboarding credentials."
                     : "Fetches the installer script, extracts the agent binary from the Docker image, installs the systemd unit, and starts the service."
                 }
-                helperHint="Run this command on your server"
+                helperHint={
+                  selectedInstallTab === "docker"
+                    ? "Run this command on your server. It always fetches the latest image first."
+                    : "Run this command on your server"
+                }
                 highlighted
                 label={selectedInstallTab === "docker" ? "Docker Command" : "systemd Install Command"}
                 copyLabel={
@@ -900,7 +904,11 @@ function CodeBlock({ highlighted = false, value }: { highlighted?: boolean; valu
 }
 
 function buildDockerCommand(system: SystemOnboardingRecord): string {
+  const image = shellEnvQuote("bifrost-agent:latest");
   return [
+    `AGENT_IMAGE=${image}`,
+    'docker pull "$AGENT_IMAGE" && \\',
+    '  (docker rm -f bifrost-agent >/dev/null 2>&1 || true) && \\',
     "docker run -d \\",
     "  --name bifrost-agent \\",
     "  --restart unless-stopped \\",
@@ -922,13 +930,13 @@ function buildDockerCommand(system: SystemOnboardingRecord): string {
     "  -e BIFROST_COLLECT_DOCKER='true' \\",
     "  -e BIFROST_COLLECT_LOGS='true' \\",
     "  -e BIFROST_DOCKER_INCLUDE_ALL='true' \\",
-    "  bifrost-agent:latest",
+    '  "$AGENT_IMAGE"',
   ].join("\n");
 }
 
 function buildSystemdCommand(system: SystemOnboardingRecord): string {
   return [
-    `curl -fsSL ${shellEnvQuote((system.install_script_url || `${system.backend_url || ""}/api/v1/install/agent.sh`).replace(/\/+$/, ""))} | sudo env \\`,
+    `curl -fsSL ${shellEnvQuote((system.install_script_url || `${system.backend_url || ""}/api/v1/agent/install.sh`).replace(/\/+$/, ""))} | sudo env \\`,
     `  BIFROST_AGENT_ID=${shellEnvQuote(system.agent_id)} \\`,
     `  BIFROST_SERVER_ID=${shellEnvQuote(system.server_id)} \\`,
     `  BIFROST_SERVER_NAME=${shellEnvQuote(system.name)} \\`,

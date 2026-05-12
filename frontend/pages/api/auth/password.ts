@@ -6,6 +6,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await proxyApiRequest(req, res, {
     allowBody: true,
     method: "POST",
-    path: "/api/v1/me/password",
+    path: "/api/v1/auth/me/password",
   });
 }
