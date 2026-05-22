@@ -44,6 +44,7 @@ export default function ServerDetail({ serverRouteID, currentUser }: ServerDetai
       return;
     }
 
+    const routeID = serverRouteID;
     let isMounted = true;
 
     async function loadBundle() {
@@ -51,7 +52,7 @@ export default function ServerDetail({ serverRouteID, currentUser }: ServerDetai
       setLoadError(null);
 
       try {
-        const response = await fetch(`/api/servers/${encodeURIComponent(serverRouteID)}`);
+        const response = await fetch(`/api/servers/${encodeURIComponent(routeID)}`);
 
         if (response.status === 401) {
           void router.push("/login");
